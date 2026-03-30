@@ -300,7 +300,6 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={{ padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <img src="/favicon.svg" alt="" width={28} height={28} />
           <span style={{ fontSize: '1.2rem', fontWeight: 800, color: TEXT, letterSpacing: '-0.03em' }}>Weeklie</span>
         </div>
         <CTAButton>Open App</CTAButton>
