@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
-    // Use env override if provided; otherwise, use '/Weeklie/' in production and '/' in other modes
-    base: envBase ?? (mode === 'production' ? '/Weeklie/' : '/'),
+    // Use env override if provided; otherwise default to '/' (custom domain serves from root)
+    base: envBase ?? '/',
   };
 });
