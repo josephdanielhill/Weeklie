@@ -227,7 +227,24 @@ export default function App() {
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
 
         <div style={{ marginBottom: "2rem" }}>
-          <h1 style={{ fontSize: "2.4rem", fontWeight: 800, color: "#f8fafc", marginBottom: 2, letterSpacing: "-0.03em" }}>Weeklie</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: 2 }}>
+            <h1 style={{ fontSize: "2.4rem", fontWeight: 800, color: "#f8fafc", margin: 0, letterSpacing: "-0.03em" }}>Weeklie</h1>
+            <a
+              href="https://tally.so/r/zxNrGM"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Share feedback"
+              style={{ display: "flex", alignItems: "center", color: "#475569", transition: "color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+              onMouseLeave={e => e.currentTarget.style.color = "#475569"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="2" y="9" width="5" height="6" rx="1"/>
+                <path d="M7 9.5L18 5v14L7 14.5"/>
+                <path d="M18 8c2 1 3 2.5 3 4s-1 3-3 4"/>
+              </svg>
+            </a>
+          </div>
           <p style={{ fontSize: "1rem", color: "#94a3b8", fontWeight: 500, margin: "0 0 8px 0" }}>Weekly Work Planner</p>
           <p style={{ fontSize: "0.88rem", color: "#64748b", margin: 0, maxWidth: 480, lineHeight: 1.6 }}>An easy and simple way to plan your work week schedule, so you always stay on top of your hours.</p>
           <span style={{ display: "inline-block", marginTop: 8, fontSize: "0.72rem", color: "#334155", fontWeight: 600, letterSpacing: "0.05em" }}>v1.36.0</span>
