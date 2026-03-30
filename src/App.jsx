@@ -6,7 +6,6 @@ const MAX_START = 11;
 const MIN_END = 13;
 const MAX_END = 22;
 const LUNCH_OPTIONS = [0, 15, 30, 45, 60, 80, 100, 120, 140];
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 function toTime(h) {
   const totalMins = Math.round(h * 60 / 15) * 15;
@@ -53,6 +52,22 @@ function getMondayOf(dateStr) {
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   return d;
+}
+
+function getISOWeek(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function currentMondayStr() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(today.getFullYear(), today.getMonth(), today.getDate() + diff);
+  return m.getFullYear() + "-" + String(m.getMonth() + 1).padStart(2, "0") + "-" + String(m.getDate()).padStart(2, "0");
 }
 
 function addDays(date, n) {
@@ -184,7 +199,7 @@ export default function App() {
   const [weekly, setWeekly] = useState(40);
   const [carryOver, setCarryOver] = useState(0);
   const [days, setDays] = useState(DAYS.map(defaultDay));
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(currentMondayStr);
   const [exportMsg, setExportMsg] = useState("");
 
   const effectiveTarget = Math.max(0, weekly - carryOver);
@@ -372,13 +387,7 @@ export default function App() {
         <div style={{ background: "#1e293b", borderRadius: 16, padding: "1.5rem", marginTop: "0.5rem" }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#f8fafc", marginBottom: "1rem" }}>Export to Calendar</div>
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ fontSize: "0.8rem", color: "#94a3b8", display: "block", marginBottom: 8 }}>Week starting:</label>
-            <InlineDatePicker value={startDate} onChange={setStartDate} />
-            {startDate && (
-              <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block", marginTop: 8 }}>
-                {"Week of " + getMondayOf(startDate).toLocaleDateString("en-DE", { day: "numeric", month: "short", year: "numeric" })}
-              </span>
-            )}
+            <CWPicker value={startDate} onChange={setStartDate} />
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button onClick={handleGoogleCalendar} style={{ border: "none", borderRadius: 10, padding: "10px 18px", color: "#fff", fontSize: "0.85rem", cursor: "pointer", fontWeight: 600, background: "#4285f4" }}>
@@ -406,36 +415,27 @@ function SliderRow({ label, value, min, max, step, display, onChange, color, wid
   );
 }
 
-function InlineDatePicker({ value, onChange }) {
-  const today = new Date();
-  const init = value ? new Date(value + "T00:00:00") : today;
-  const [view, setView] = useState({ month: init.getMonth(), year: init.getFullYear() });
-  const firstDay = new Date(view.year, view.month, 1);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  const prevMonth = () => setView(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { month: v.month - 1, year: v.year });
-  const nextMonth = () => setView(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { month: v.month + 1, year: v.year });
-  const selectDay = (d) => onChange(view.year + "-" + String(view.month + 1).padStart(2,"0") + "-" + String(d).padStart(2,"0"));
+function CWPicker({ value, onChange }) {
+  const monday = new Date(value + "T00:00:00");
+  const friday = addDays(monday, 4);
+  const cw = getISOWeek(monday);
+
+  const navigate = (weeks) => {
+    const next = addDays(monday, weeks * 7);
+    onChange(next.getFullYear() + "-" + String(next.getMonth() + 1).padStart(2, "0") + "-" + String(next.getDate()).padStart(2, "0"));
+  };
+
+  const monStr = monday.toLocaleDateString("en-DE", { day: "numeric", month: "short" });
+  const friStr = friday.toLocaleDateString("en-DE", { day: "numeric", month: "short", year: "numeric" });
+
   return (
-    <div style={{ background: "#0f172a", borderRadius: 12, padding: "12px", display: "inline-block", border: "1.5px solid #334155" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <button onClick={prevMonth} style={navBtn}>&#8249;</button>
-        <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#f8fafc" }}>{MONTHS[view.month]} {view.year}</span>
-        <button onClick={nextMonth} style={navBtn}>&#8250;</button>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 14, background: "#0f172a", borderRadius: 12, padding: "10px 14px", border: "1.5px solid #334155" }}>
+      <button onClick={() => navigate(-1)} style={navBtn}>&#8249;</button>
+      <div style={{ textAlign: "center", minWidth: 170 }}>
+        <div style={{ fontSize: "1rem", fontWeight: 700, color: "#f8fafc" }}>CW {String(cw).padStart(2, "0")}</div>
+        <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 3 }}>{monStr} – {friStr}</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 32px)", gap: 2 }}>
-        {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d => <div key={d} style={{ textAlign: "center", fontSize: "0.7rem", color: "#475569", fontWeight: 700, padding: "2px 0" }}>{d}</div>)}
-        {cells.map((d, i) => {
-          if (!d) return <div key={"e" + i} />;
-          const dateStr = view.year + "-" + String(view.month + 1).padStart(2,"0") + "-" + String(d).padStart(2,"0");
-          const isSelected = value === dateStr;
-          const isToday = today.getFullYear() === view.year && today.getMonth() === view.month && today.getDate() === d;
-          return <button key={d} onClick={() => selectDay(d)} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: isSelected ? "#6366f1" : isToday ? "#1e3a5f" : "transparent", color: isSelected ? "#fff" : isToday ? "#93c5fd" : "#cbd5e1", fontWeight: isSelected || isToday ? 700 : 400, fontSize: "0.82rem", cursor: "pointer" }}>{d}</button>;
-        })}
-      </div>
+      <button onClick={() => navigate(1)} style={navBtn}>&#8250;</button>
     </div>
   );
 }
