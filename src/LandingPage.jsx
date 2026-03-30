@@ -202,46 +202,27 @@ function MockDayCard({ day, hours, locked, offDay, offHours, startPct, endPct, l
   );
 }
 
-function MockCalendarExport() {
+function MockCWExport() {
   return (
     <div style={{ background: CARD, borderRadius: 16, padding: '1.5rem' }}>
       <div style={{ fontSize: '0.85rem', fontWeight: 700, color: TEXT, marginBottom: '1rem' }}>Export to Calendar</div>
       <div style={{ marginBottom: '1rem' }}>
-        <div style={{ fontSize: '0.78rem', color: TEXT3, marginBottom: 8 }}>Week starting:</div>
         <div style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 14,
           background: BG,
           borderRadius: 12,
-          padding: '12px',
-          display: 'inline-block',
+          padding: '10px 14px',
           border: `1.5px solid ${CARD2}`,
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <div style={{ background: CARD, borderRadius: 8, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT, fontSize: '1rem' }}>‹</div>
-            <span style={{ fontWeight: 700, fontSize: '0.82rem', color: TEXT }}>April 2025</span>
-            <div style={{ background: CARD, borderRadius: 8, width: 26, height: 26, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT, fontSize: '1rem' }}>›</div>
+          <div style={{ background: CARD, borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT, fontSize: '1.1rem', fontWeight: 700 }}>‹</div>
+          <div style={{ textAlign: 'center', minWidth: 170 }}>
+            <div style={{ fontSize: '1rem', fontWeight: 700, color: TEXT }}>CW 14</div>
+            <div style={{ fontSize: '0.75rem', color: TEXT4, marginTop: 3 }}>31 Mar – 4 Apr 2025</div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 28px)', gap: 2 }}>
-            {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => (
-              <div key={d} style={{ textAlign: 'center', fontSize: '0.65rem', color: TEXT4, fontWeight: 700, padding: '2px 0' }}>{d}</div>
-            ))}
-            {[null,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21].map((d,i) => (
-              d === null
-                ? <div key={'e'+i} />
-                : <div key={d} style={{
-                    width: 28, height: 28,
-                    borderRadius: 7,
-                    background: d === 7 ? ACCENT : 'transparent',
-                    color: d === 7 ? '#fff' : TEXT2,
-                    fontWeight: d === 7 ? 700 : 400,
-                    fontSize: '0.78rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>{d}</div>
-            ))}
-          </div>
+          <div style={{ background: CARD, borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', color: TEXT, fontSize: '1.1rem', fontWeight: 700 }}>›</div>
         </div>
-        <div style={{ fontSize: '0.75rem', color: TEXT4, marginTop: 8 }}>Week of 7 Apr 2025</div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <div style={{ background: '#4285f4', borderRadius: 10, padding: '10px 18px', color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>
@@ -507,7 +488,7 @@ export default function LandingPage() {
             <FeatureLabel text="Calendar Export" />
             <FeatureHeading>Send it straight to your calendar</FeatureHeading>
             <FeatureBody>
-              Once your week is planned, export it directly to Google Calendar or download an .ics file for any other app. Morning blocks, lunch breaks, and afternoon sessions are created as separate events.
+              Once your week is planned, pick the calendar week with the CW picker and export directly to Google Calendar or download an .ics file for any other app. Morning blocks, lunch breaks, and afternoon sessions are created as separate events.
             </FeatureBody>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
@@ -523,7 +504,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div style={{ order: 1 }}>
-            <MockCalendarExport />
+            <MockCWExport />
           </div>
         </div>
       </Section>
