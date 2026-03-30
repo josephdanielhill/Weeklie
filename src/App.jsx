@@ -238,10 +238,8 @@ export default function App() {
               onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
               onMouseLeave={e => e.currentTarget.style.color = "#475569"}
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="2" y="9" width="5" height="6" rx="1"/>
-                <path d="M7 9.5L18 5v14L7 14.5"/>
-                <path d="M18 8c2 1 3 2.5 3 4s-1 3-3 4"/>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
               </svg>
             </a>
           </div>
