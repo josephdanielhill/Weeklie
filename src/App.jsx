@@ -240,6 +240,7 @@ export default function App() {
 
         <div style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: 2 }}>
+            <img src="/favicon.svg" alt="" width={36} height={36} style={{ borderRadius: 9 }} />
             <h1 style={{ fontSize: "2.4rem", fontWeight: 800, color: "#f8fafc", margin: 0, letterSpacing: "-0.03em" }}>Weeklie</h1>
             <a
               href="https://tally.so/r/zxNrGM"
