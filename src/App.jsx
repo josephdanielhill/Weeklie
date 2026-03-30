@@ -20,7 +20,11 @@ function dayHours(start, end, lunch) {
 }
 
 function defaultDay() {
-  return { start: 8, end: 17, lunch: 30, lunchStart: 12, locked: false };
+  return { start: 8, end: 17, lunch: 30, lunchStart: 12, locked: false, offDay: false, offHours: 8 };
+}
+
+function effectiveHours(d) {
+  return d.offDay ? d.offHours : dayHours(d.start, d.end, d.lunch);
 }
 
 function clampLunchStart(lunchStart, start, end, lunch) {
@@ -30,12 +34,13 @@ function clampLunchStart(lunchStart, start, end, lunch) {
 }
 
 function redistribute(days, changedIdx, weeklyTarget) {
-  const unlocked = days.map((d, i) => i !== changedIdx && !d.locked ? i : null).filter(i => i !== null);
-  const lockedHours = days.reduce((sum, d, i) => i === changedIdx || d.locked ? sum + dayHours(d.start, d.end, d.lunch) : sum, 0);
+  const unlocked = days.map((d, i) => i !== changedIdx && !d.locked && !d.offDay ? i : null).filter(i => i !== null);
+  const lockedHours = days.reduce((sum, d, i) => i === changedIdx || d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
+  if (unlocked.length === 0) return days;
   const remaining = weeklyTarget - lockedHours;
   const perDay = remaining / unlocked.length;
   return days.map((d, i) => {
-    if (i === changedIdx || d.locked || !unlocked.includes(i)) return d;
+    if (i === changedIdx || d.locked || d.offDay || !unlocked.includes(i)) return d;
     const newEnd = Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.lunch / 60));
     const rounded = Math.round(newEnd * 4) / 4;
     return { ...d, end: rounded, lunchStart: clampLunchStart(d.lunchStart, d.start, rounded, d.lunch) };
@@ -95,6 +100,7 @@ function buildICS(days, startMonday) {
   ];
 
   days.forEach(function(d, i) {
+    if (d.offDay) return;
     const dayDate = addDays(startMonday, i);
     const dateStr = formatDateLocal(dayDate);
     const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
@@ -182,7 +188,7 @@ export default function App() {
   const [exportMsg, setExportMsg] = useState("");
 
   const effectiveTarget = Math.max(0, weekly - carryOver);
-  const totalHours = days.reduce((s, d) => s + dayHours(d.start, d.end, d.lunch), 0);
+  const totalHours = days.reduce((s, d) => s + effectiveHours(d), 0);
   const diff = totalHours - effectiveTarget;
   const pct = Math.min(100, (totalHours / effectiveTarget) * 100);
   const barColor = Math.abs(diff) < 0.1 ? "#22c55e" : diff > 0 ? "#ef4444" : "#f59e0b";
@@ -192,7 +198,7 @@ export default function App() {
       const next = prev.map((d, i) => {
         if (i !== idx) return d;
         const updated = Object.assign({}, d, { [field]: value });
-        if (field !== "locked") {
+        if (field !== "locked" && field !== "offDay" && field !== "offHours") {
           updated.lunchStart = clampLunchStart(updated.lunchStart, updated.start, updated.end, updated.lunch);
         }
         return updated;
@@ -205,17 +211,23 @@ export default function App() {
   const handleWeekly = (val) => {
     const w = Math.max(1, Math.min(80, val));
     setWeekly(w);
-    setDays(prev => prev.map(d => {
-      if (d.locked) return d;
-      const newEnd = Math.min(MAX_END, Math.round((d.start + w / 5 + d.lunch / 60) * 4) / 4);
-      return Object.assign({}, d, { end: newEnd, lunchStart: clampLunchStart(d.lunchStart, d.start, newEnd, d.lunch) });
-    }));
+    setDays(prev => {
+      const fixedHours = prev.reduce((sum, d) => d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
+      const activeCount = prev.filter(d => !d.locked && !d.offDay).length;
+      const perDay = activeCount > 0 ? (w - fixedHours) / activeCount : 0;
+      return prev.map(d => {
+        if (d.locked || d.offDay) return d;
+        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.lunch / 60) * 4) / 4);
+        return Object.assign({}, d, { end: newEnd, lunchStart: clampLunchStart(d.lunchStart, d.start, newEnd, d.lunch) });
+      });
+    });
   };
 
   const handleGoogleCalendar = () => {
     if (!startDate) { setExportMsg("Please pick a start date first."); setTimeout(() => setExportMsg(""), 4000); return; }
     const monday = getMondayOf(startDate);
     days.forEach((d, i) => {
+      if (d.offDay) return;
       buildGCalUrl(d, addDays(monday, i)).forEach(url => window.open(url, "_blank"));
     });
     setExportMsg("Opened Google Calendar tabs!");
@@ -296,37 +308,60 @@ export default function App() {
           const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
           const lunchMinStart = d.start + 0.5;
           const lunchMaxStart = d.end - d.lunch / 60 - 0.25;
+          const borderColor = d.offDay ? "1.5px solid #f59e0b" : d.locked ? "1.5px solid #6366f1" : "1.5px solid transparent";
           return (
-            <div key={DAYS[i]} style={{ background: "#1e293b", borderRadius: 16, padding: "1.25rem 1.5rem", marginBottom: "1rem", border: d.locked ? "1.5px solid #6366f1" : "1.5px solid transparent" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div key={DAYS[i]} style={{ background: "#1e293b", borderRadius: 16, padding: "1.25rem 1.5rem", marginBottom: "1rem", border: borderColor, opacity: d.offDay ? 0.75 : 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: d.offDay ? "0.75rem" : "1rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontWeight: 700, fontSize: "1rem", color: "#f8fafc" }}>{DAYS[i]}</span>
-                  <span style={{ background: "#0f172a", padding: "2px 10px", borderRadius: 99, fontSize: "0.8rem", color: "#94a3b8" }}>{dh.toFixed(1)}h</span>
+                  <span style={{ fontWeight: 700, fontSize: "1rem", color: d.offDay ? "#94a3b8" : "#f8fafc" }}>{DAYS[i]}</span>
+                  {d.offDay
+                    ? <span style={{ background: "#f59e0b22", padding: "2px 10px", borderRadius: 99, fontSize: "0.8rem", color: "#f59e0b", fontWeight: 600 }}>Off</span>
+                    : <span style={{ background: "#0f172a", padding: "2px 10px", borderRadius: 99, fontSize: "0.8rem", color: "#94a3b8" }}>{dh.toFixed(1)}h</span>
+                  }
                 </div>
-                <button onClick={() => updateDay(i, "locked", !d.locked)} style={{ background: d.locked ? "#6366f1" : "#334155", border: "none", borderRadius: 8, padding: "4px 10px", color: "#f8fafc", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
-                  {d.locked ? "Locked" : "Lock"}
-                </button>
-              </div>
-              <SliderRow label="Start" value={d.start} min={MIN_START} max={Math.min(d.end - 1, MAX_START)} step={0.25} display={toTime(d.start)} onChange={v => updateDay(i, "start", v)} color="#6366f1" />
-              <SliderRow label="End" value={d.end} min={Math.max(d.start + 1, MIN_END)} max={MAX_END} step={0.25} display={toTime(d.end)} onChange={v => updateDay(i, "end", v)} color="#818cf8" />
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Lunch</span>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {LUNCH_OPTIONS.map(opt => (
-                    <button key={opt} onClick={() => updateDay(i, "lunch", opt)} style={{ background: d.lunch === opt ? "#6366f1" : "#0f172a", color: d.lunch === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
-                      {opt === 0 ? "None" : opt + "m"}
+                <div style={{ display: "flex", gap: 6 }}>
+                  {!d.offDay && (
+                    <button onClick={() => updateDay(i, "locked", !d.locked)} style={{ background: d.locked ? "#6366f1" : "#334155", border: "none", borderRadius: 8, padding: "4px 10px", color: "#f8fafc", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
+                      {d.locked ? "Locked" : "Lock"}
                     </button>
-                  ))}
+                  )}
+                  <button onClick={() => updateDay(i, "offDay", !d.offDay)} style={{ background: d.offDay ? "#f59e0b" : "#334155", border: "none", borderRadius: 8, padding: "4px 10px", color: d.offDay ? "#0f172a" : "#f8fafc", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
+                    {d.offDay ? "Off Day" : "Off"}
+                  </button>
                 </div>
               </div>
-              {d.lunch > 0 && (
-                <div style={{ marginTop: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
-                  <SliderRow label="Lunch" value={d.lunchStart} min={lunchMinStart} max={lunchMaxStart} step={0.25} display={toTime(d.lunchStart) + " - " + toTime(lunchEnd)} onChange={v => updateDay(i, "lunchStart", v)} color="#f59e0b" wide={true} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 46 }}>
-                    <span>Morning: {dayHours(d.start, d.lunchStart, 0).toFixed(1)}h</span>
-                    <span>Afternoon: {dayHours(lunchEnd, d.end, 0).toFixed(1)}h</span>
-                  </div>
+              {d.offDay ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>Counts as</span>
+                  <button onClick={() => updateDay(i, "offHours", Math.max(0, Math.round((d.offHours - 0.5) * 2) / 2))} style={btnStyle}>-</button>
+                  <span style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b", minWidth: 46, textAlign: "center" }}>{d.offHours}h</span>
+                  <button onClick={() => updateDay(i, "offHours", Math.min(12, Math.round((d.offHours + 0.5) * 2) / 2))} style={btnStyle}>+</button>
+                  <span style={{ fontSize: "0.72rem", color: "#475569" }}>· not exported to calendar</span>
                 </div>
+              ) : (
+                <>
+                  <SliderRow label="Start" value={d.start} min={MIN_START} max={Math.min(d.end - 1, MAX_START)} step={0.25} display={toTime(d.start)} onChange={v => updateDay(i, "start", v)} color="#6366f1" />
+                  <SliderRow label="End" value={d.end} min={Math.max(d.start + 1, MIN_END)} max={MAX_END} step={0.25} display={toTime(d.end)} onChange={v => updateDay(i, "end", v)} color="#818cf8" />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Lunch</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {LUNCH_OPTIONS.map(opt => (
+                        <button key={opt} onClick={() => updateDay(i, "lunch", opt)} style={{ background: d.lunch === opt ? "#6366f1" : "#0f172a", color: d.lunch === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
+                          {opt === 0 ? "None" : opt + "m"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {d.lunch > 0 && (
+                    <div style={{ marginTop: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
+                      <SliderRow label="Lunch" value={d.lunchStart} min={lunchMinStart} max={lunchMaxStart} step={0.25} display={toTime(d.lunchStart) + " - " + toTime(lunchEnd)} onChange={v => updateDay(i, "lunchStart", v)} color="#f59e0b" wide={true} />
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 46 }}>
+                        <span>Morning: {dayHours(d.start, d.lunchStart, 0).toFixed(1)}h</span>
+                        <span>Afternoon: {dayHours(lunchEnd, d.end, 0).toFixed(1)}h</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );
