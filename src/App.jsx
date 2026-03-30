@@ -247,7 +247,7 @@ export default function App() {
           </div>
           <p style={{ fontSize: "1rem", color: "#94a3b8", fontWeight: 500, margin: "0 0 8px 0" }}>Weekly Work Planner</p>
           <p style={{ fontSize: "0.88rem", color: "#64748b", margin: 0, maxWidth: 480, lineHeight: 1.6 }}>An easy and simple way to plan your work week schedule, so you always stay on top of your hours.</p>
-          <span style={{ display: "inline-block", marginTop: 8, fontSize: "0.72rem", color: "#334155", fontWeight: 600, letterSpacing: "0.05em" }}>v1.36.0</span>
+          <span style={{ display: "inline-block", marginTop: 8, fontSize: "0.72rem", color: "#334155", fontWeight: 600, letterSpacing: "0.05em" }}>v{__APP_VERSION__}</span>
         </div>
 
         {/* Sticky weekly target */}
