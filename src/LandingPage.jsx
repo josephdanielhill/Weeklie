@@ -132,11 +132,11 @@ function MockSlider({ label, pct, display, color }) {
   );
 }
 
-function MockLunchPills({ selected }) {
+function MockPausePills({ selected }) {
   const opts = ['None', '15m', '30m', '45m', '60m'];
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
-      <span style={{ fontSize: '0.75rem', color: TEXT4, width: 36 }}>Lunch</span>
+      <span style={{ fontSize: '0.75rem', color: TEXT4, width: 36 }}>Pause</span>
       <div style={{ display: 'flex', gap: 5 }}>
         {opts.map(o => (
           <div key={o} style={{
@@ -153,7 +153,7 @@ function MockLunchPills({ selected }) {
   );
 }
 
-function MockDayCard({ day, hours, locked, offDay, offHours, startPct, endPct, lunch, dimmed }) {
+function MockDayCard({ day, hours, locked, offDay, offHours, startPct, endPct, pause, dimmed }) {
   const borderColor = offDay ? `1.5px solid ${AMBER}` : locked ? `1.5px solid ${ACCENT}` : '1.5px solid transparent';
   return (
     <div style={{
@@ -195,7 +195,7 @@ function MockDayCard({ day, hours, locked, offDay, offHours, startPct, endPct, l
         <>
           <MockSlider label="Start" pct={startPct ?? 40} display="08:00" color={ACCENT} />
           <MockSlider label="End" pct={endPct ?? 75} display="17:00" color={ACCENT_LIGHT} />
-          {lunch && <MockLunchPills selected="30m" />}
+          {pause && <MockPausePills selected="30m" />}
         </>
       )}
     </div>
@@ -233,7 +233,7 @@ function MockCWExport() {
         </div>
       </div>
       <p style={{ fontSize: '0.72rem', color: TEXT4, marginTop: 10, marginBottom: 0 }}>
-        Days with lunch export 3 events: morning block, lunch break, and afternoon block.
+        Days with a pause export 3 events: morning block, pause, and afternoon block.
       </p>
     </div>
   );
@@ -363,7 +363,7 @@ export default function LandingPage() {
           }} />
           <MockProgressPanel planned={37.5} target={40} />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
-            <MockDayCard day="Monday" hours="8.0" startPct={40} endPct={78} lunch />
+            <MockDayCard day="Monday" hours="8.0" startPct={40} endPct={78} pause />
             <MockDayCard day="Tuesday" hours="7.5" startPct={40} endPct={72} locked />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginTop: '0.75rem' }}>
@@ -398,7 +398,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <MockDayCard day="Monday" hours="6.0" startPct={40} endPct={56} lunch />
+            <MockDayCard day="Monday" hours="6.0" startPct={40} endPct={56} pause />
             <MockDayCard day="Tuesday" hours="8.5" startPct={40} endPct={83} />
             <MockDayCard day="Wednesday" hours="8.5" startPct={40} endPct={83} />
             <MockDayCard day="Thursday" hours="9.0" startPct={40} endPct={89} dimmed />
@@ -467,7 +467,7 @@ export default function LandingPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem' }}>
           <div>
             <div style={{ fontSize: '0.72rem', color: ACCENT_LIGHT, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, paddingLeft: 4 }}>Locked — won't auto-adjust</div>
-            <MockDayCard day="Monday" hours="8.0" startPct={40} endPct={78} locked lunch />
+            <MockDayCard day="Monday" hours="8.0" startPct={40} endPct={78} locked pause />
           </div>
           <div>
             <div style={{ fontSize: '0.72rem', color: AMBER, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, paddingLeft: 4 }}>Off day — counts toward target</div>
@@ -475,7 +475,7 @@ export default function LandingPage() {
           </div>
           <div>
             <div style={{ fontSize: '0.72rem', color: TEXT4, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, paddingLeft: 4 }}>Regular — auto-balances freely</div>
-            <MockDayCard day="Wednesday" hours="8.0" startPct={40} endPct={78} lunch />
+            <MockDayCard day="Wednesday" hours="8.0" startPct={40} endPct={78} pause />
           </div>
         </div>
       </Section>
@@ -487,13 +487,13 @@ export default function LandingPage() {
             <FeatureLabel text="Calendar Export" />
             <FeatureHeading>Send it straight to your calendar</FeatureHeading>
             <FeatureBody>
-              Once your week is planned, pick the calendar week with the CW picker and export directly to Google Calendar or download an .ics file for any other app. Morning blocks, lunch breaks, and afternoon sessions are created as separate events.
+              Once your week is planned, pick the calendar week with the CW picker and export directly to Google Calendar or download an .ics file for any other app. Morning blocks, pauses, and afternoon sessions are created as separate events.
             </FeatureBody>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
                 { icon: '📅', text: 'Add to Google Calendar — one click, all events' },
                 { icon: '📥', text: 'Download .ics for Apple Calendar, Outlook & more' },
-                { icon: '☕', text: 'Lunch breaks exported as separate events' },
+                { icon: '☕', text: 'Pauses exported as separate events' },
               ].map(({ icon, text }) => (
                 <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                   <span style={{ fontSize: '1.1rem' }}>{icon}</span>
@@ -516,7 +516,7 @@ export default function LandingPage() {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
           {[
-            { icon: '⏱', title: '15-min precision', body: 'Start, end, and lunch times snap to 15-minute increments so your schedule stays clean.' },
+            { icon: '⏱', title: '15-min precision', body: 'Start, end, and pause times snap to 15-minute increments so your schedule stays clean.' },
             { icon: '🔒', title: 'Granular locks', body: 'Lock any combination of days. Unlocked days auto-balance around them.' },
             { icon: '🌍', title: 'Timezone-aware', body: 'Calendar exports include full timezone data — no appointments shifting on you.' },
             { icon: '📱', title: 'Mobile-friendly', body: 'Plan on your phone as easily as on your desktop. No app to download.' },
