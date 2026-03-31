@@ -5,7 +5,7 @@ const MIN_START = 5;
 const MAX_START = 11;
 const MIN_END = 13;
 const MAX_END = 22;
-const LUNCH_OPTIONS = [0, 15, 30, 45, 60, 80, 100, 120, 140];
+const PAUSE_OPTIONS = [0, 15, 30, 45, 60, 80, 100, 120, 140];
 
 function toTime(h) {
   const totalMins = Math.round(h * 60 / 15) * 15;
@@ -14,22 +14,22 @@ function toTime(h) {
   return String(hh).padStart(2,"0") + ":" + String(mm).padStart(2,"0");
 }
 
-function dayHours(start, end, lunch) {
-  return Math.max(0, end - start - lunch / 60);
+function dayHours(start, end, pause) {
+  return Math.max(0, end - start - pause / 60);
 }
 
 function defaultDay() {
-  return { start: 8, end: 17, lunch: 30, lunchStart: 12, locked: false, offDay: false, offHours: 8 };
+  return { start: 8, end: 17, pause: 30, pauseStart: 12, locked: false, offDay: false, offHours: 8 };
 }
 
 function effectiveHours(d) {
-  return d.offDay ? d.offHours : dayHours(d.start, d.end, d.lunch);
+  return d.offDay ? d.offHours : dayHours(d.start, d.end, d.pause);
 }
 
-function clampLunchStart(lunchStart, start, end, lunch) {
+function clampPauseStart(pauseStart, start, end, pause) {
   const minLS = start + 0.5;
-  const maxLS = end - lunch / 60 - 0.25;
-  return Math.min(maxLS, Math.max(minLS, lunchStart));
+  const maxLS = end - pause / 60 - 0.25;
+  return Math.min(maxLS, Math.max(minLS, pauseStart));
 }
 
 function redistribute(days, changedIdx, weeklyTarget) {
@@ -40,9 +40,9 @@ function redistribute(days, changedIdx, weeklyTarget) {
   const perDay = remaining / unlocked.length;
   return days.map((d, i) => {
     if (i === changedIdx || d.locked || d.offDay || !unlocked.includes(i)) return d;
-    const newEnd = Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.lunch / 60));
+    const newEnd = Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.pause / 60));
     const rounded = Math.round(newEnd * 4) / 4;
-    return { ...d, end: rounded, lunchStart: clampLunchStart(d.lunchStart, d.start, rounded, d.lunch) };
+    return { ...d, end: rounded, pauseStart: clampPauseStart(d.pauseStart, d.start, rounded, d.pause) };
   });
 }
 
@@ -118,7 +118,7 @@ function buildICS(days, startMonday) {
     if (d.offDay) return;
     const dayDate = addDays(startMonday, i);
     const dateStr = formatDateLocal(dayDate);
-    const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
+    const pauseEnd = d.pause > 0 ? d.pauseStart + d.pause / 60 : null;
 
     function addEvent(uid, start, end, title, desc) {
       lines.push("BEGIN:VEVENT");
@@ -130,10 +130,10 @@ function buildICS(days, startMonday) {
       lines.push("END:VEVENT");
     }
 
-    if (d.lunch > 0) {
-      addEvent("weeklie-" + dateStr + "-" + i + "-morning", d.start, d.lunchStart, "Planned Working Block", "Morning block " + dayHours(d.start, d.lunchStart, 0).toFixed(1) + "h");
-      addEvent("weeklie-" + dateStr + "-" + i + "-lunch", d.lunchStart, lunchEnd, "Lunch Break", d.lunch + " min lunch break");
-      addEvent("weeklie-" + dateStr + "-" + i + "-afternoon", lunchEnd, d.end, "Planned Working Block", "Afternoon block " + dayHours(lunchEnd, d.end, 0).toFixed(1) + "h");
+    if (d.pause > 0) {
+      addEvent("weeklie-" + dateStr + "-" + i + "-morning", d.start, d.pauseStart, "Planned Working Block", "Morning block " + dayHours(d.start, d.pauseStart, 0).toFixed(1) + "h");
+      addEvent("weeklie-" + dateStr + "-" + i + "-pause", d.pauseStart, pauseEnd, "Pause", d.pause + " min pause");
+      addEvent("weeklie-" + dateStr + "-" + i + "-afternoon", pauseEnd, d.end, "Planned Working Block", "Afternoon block " + dayHours(pauseEnd, d.end, 0).toFixed(1) + "h");
     } else {
       addEvent("weeklie-" + dateStr + "-" + i + "-work", d.start, d.end, "Planned Working Block", "Full day " + dayHours(d.start, d.end, 0).toFixed(1) + "h");
     }
@@ -145,7 +145,7 @@ function buildICS(days, startMonday) {
 
 function buildGCalUrl(d, dayDate) {
   const dateStr = formatDateLocal(dayDate);
-  const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
+  const pauseEnd = d.pause > 0 ? d.pauseStart + d.pause / 60 : null;
   const urls = [];
 
   function makeUrl(start, end, title, details) {
@@ -154,10 +154,10 @@ function buildGCalUrl(d, dayDate) {
     return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(title) + "&dates=" + dateStr + "T" + s + "/" + dateStr + "T" + e + "&details=" + encodeURIComponent(details) + "&ctz=Europe/Berlin";
   }
 
-  if (d.lunch > 0) {
-    urls.push(makeUrl(d.start, d.lunchStart, "Planned Working Block", "Morning block " + dayHours(d.start, d.lunchStart, 0).toFixed(1) + "h"));
-    urls.push(makeUrl(d.lunchStart, lunchEnd, "Lunch Break", d.lunch + " min lunch break"));
-    urls.push(makeUrl(lunchEnd, d.end, "Planned Working Block", "Afternoon block " + dayHours(lunchEnd, d.end, 0).toFixed(1) + "h"));
+  if (d.pause > 0) {
+    urls.push(makeUrl(d.start, d.pauseStart, "Planned Working Block", "Morning block " + dayHours(d.start, d.pauseStart, 0).toFixed(1) + "h"));
+    urls.push(makeUrl(d.pauseStart, pauseEnd, "Pause", d.pause + " min pause"));
+    urls.push(makeUrl(pauseEnd, d.end, "Planned Working Block", "Afternoon block " + dayHours(pauseEnd, d.end, 0).toFixed(1) + "h"));
   } else {
     urls.push(makeUrl(d.start, d.end, "Planned Working Block", "Full day " + dayHours(d.start, d.end, 0).toFixed(1) + "h"));
   }
@@ -214,7 +214,7 @@ export default function App() {
         if (i !== idx) return d;
         const updated = Object.assign({}, d, { [field]: value });
         if (field !== "locked" && field !== "offDay" && field !== "offHours") {
-          updated.lunchStart = clampLunchStart(updated.lunchStart, updated.start, updated.end, updated.lunch);
+          updated.pauseStart = clampPauseStart(updated.pauseStart, updated.start, updated.end, updated.pause);
         }
         return updated;
       });
@@ -232,8 +232,8 @@ export default function App() {
       const perDay = activeCount > 0 ? (w - fixedHours) / activeCount : 0;
       return prev.map(d => {
         if (d.locked || d.offDay) return d;
-        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.lunch / 60) * 4) / 4);
-        return Object.assign({}, d, { end: newEnd, lunchStart: clampLunchStart(d.lunchStart, d.start, newEnd, d.lunch) });
+        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.pause / 60) * 4) / 4);
+        return Object.assign({}, d, { end: newEnd, pauseStart: clampPauseStart(d.pauseStart, d.start, newEnd, d.pause) });
       });
     });
   };
@@ -319,10 +319,10 @@ export default function App() {
 
         {/* Days */}
         {days.map((d, i) => {
-          const dh = dayHours(d.start, d.end, d.lunch);
-          const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
-          const lunchMinStart = d.start + 0.5;
-          const lunchMaxStart = d.end - d.lunch / 60 - 0.25;
+          const dh = dayHours(d.start, d.end, d.pause);
+          const pauseEnd = d.pause > 0 ? d.pauseStart + d.pause / 60 : null;
+          const pauseMinStart = d.start + 0.5;
+          const pauseMaxStart = d.end - d.pause / 60 - 0.25;
           const borderColor = d.offDay ? "1.5px solid #f59e0b" : d.locked ? "1.5px solid #6366f1" : "1.5px solid transparent";
           return (
             <div key={DAYS[i]} style={{ background: "#1e293b", borderRadius: 16, padding: "1.25rem 1.5rem", marginBottom: "1rem", border: borderColor, opacity: d.offDay ? 0.75 : 1 }}>
@@ -358,21 +358,21 @@ export default function App() {
                   <SliderRow label="Start" value={d.start} min={MIN_START} max={Math.min(d.end - 1, MAX_START)} step={0.25} display={toTime(d.start)} onChange={v => updateDay(i, "start", v)} color="#6366f1" />
                   <SliderRow label="End" value={d.end} min={Math.max(d.start + 1, MIN_END)} max={MAX_END} step={0.25} display={toTime(d.end)} onChange={v => updateDay(i, "end", v)} color="#818cf8" />
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Lunch</span>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Pause</span>
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {LUNCH_OPTIONS.map(opt => (
-                        <button key={opt} onClick={() => updateDay(i, "lunch", opt)} style={{ background: d.lunch === opt ? "#6366f1" : "#0f172a", color: d.lunch === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
+                      {PAUSE_OPTIONS.map(opt => (
+                        <button key={opt} onClick={() => updateDay(i, "pause", opt)} style={{ background: d.pause === opt ? "#6366f1" : "#0f172a", color: d.pause === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
                           {opt === 0 ? "None" : opt + "m"}
                         </button>
                       ))}
                     </div>
                   </div>
-                  {d.lunch > 0 && (
+                  {d.pause > 0 && (
                     <div style={{ marginTop: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
-                      <SliderRow label="Lunch" value={d.lunchStart} min={lunchMinStart} max={lunchMaxStart} step={0.25} display={toTime(d.lunchStart) + " - " + toTime(lunchEnd)} onChange={v => updateDay(i, "lunchStart", v)} color="#f59e0b" wide={true} />
+                      <SliderRow label="Pause" value={d.pauseStart} min={pauseMinStart} max={pauseMaxStart} step={0.25} display={toTime(d.pauseStart) + " - " + toTime(pauseEnd)} onChange={v => updateDay(i, "pauseStart", v)} color="#f59e0b" wide={true} />
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 46 }}>
-                        <span>Morning: {dayHours(d.start, d.lunchStart, 0).toFixed(1)}h</span>
-                        <span>Afternoon: {dayHours(lunchEnd, d.end, 0).toFixed(1)}h</span>
+                        <span>Morning: {dayHours(d.start, d.pauseStart, 0).toFixed(1)}h</span>
+                        <span>Afternoon: {dayHours(pauseEnd, d.end, 0).toFixed(1)}h</span>
                       </div>
                     </div>
                   )}
@@ -395,7 +395,7 @@ export default function App() {
             <ICSDownloadLink days={days} startDate={startDate} onError={msg => { setExportMsg(msg); setTimeout(() => setExportMsg(""), 4000); }} />
           </div>
           {exportMsg && <div style={{ marginTop: 10, fontSize: "0.82rem", color: "#22c55e", fontWeight: 600 }}>{exportMsg}</div>}
-          <p style={{ fontSize: "0.75rem", color: "#475569", marginTop: 10, marginBottom: 0 }}>Days with lunch export 3 events: morning block, lunch break, and afternoon block.</p>
+          <p style={{ fontSize: "0.75rem", color: "#475569", marginTop: 10, marginBottom: 0 }}>Days with a pause export 3 events: morning block, pause, and afternoon block.</p>
         </div>
 
         <p style={{ textAlign: "center", color: "#334155", fontSize: "0.75rem", marginTop: "1.5rem" }}>Adjust any day — unlocked days auto-balance to meet your weekly target</p>
