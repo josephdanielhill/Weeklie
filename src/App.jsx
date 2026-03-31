@@ -6,7 +6,6 @@ const MAX_START = 11;
 const MIN_END = 13;
 const MAX_END = 22;
 const LUNCH_OPTIONS = [0, 15, 30, 45, 60, 80, 100, 120, 140];
-const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 function toTime(h) {
   const totalMins = Math.round(h * 60 / 15) * 15;
@@ -20,7 +19,11 @@ function dayHours(start, end, lunch) {
 }
 
 function defaultDay() {
-  return { start: 8, end: 17, lunch: 30, lunchStart: 12, locked: false };
+  return { start: 8, end: 17, lunch: 30, lunchStart: 12, locked: false, offDay: false, offHours: 8 };
+}
+
+function effectiveHours(d) {
+  return d.offDay ? d.offHours : dayHours(d.start, d.end, d.lunch);
 }
 
 function clampLunchStart(lunchStart, start, end, lunch) {
@@ -30,12 +33,13 @@ function clampLunchStart(lunchStart, start, end, lunch) {
 }
 
 function redistribute(days, changedIdx, weeklyTarget) {
-  const unlocked = days.map((d, i) => i !== changedIdx && !d.locked ? i : null).filter(i => i !== null);
-  const lockedHours = days.reduce((sum, d, i) => i === changedIdx || d.locked ? sum + dayHours(d.start, d.end, d.lunch) : sum, 0);
+  const unlocked = days.map((d, i) => i !== changedIdx && !d.locked && !d.offDay ? i : null).filter(i => i !== null);
+  const lockedHours = days.reduce((sum, d, i) => i === changedIdx || d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
+  if (unlocked.length === 0) return days;
   const remaining = weeklyTarget - lockedHours;
   const perDay = remaining / unlocked.length;
   return days.map((d, i) => {
-    if (i === changedIdx || d.locked || !unlocked.includes(i)) return d;
+    if (i === changedIdx || d.locked || d.offDay || !unlocked.includes(i)) return d;
     const newEnd = Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.lunch / 60));
     const rounded = Math.round(newEnd * 4) / 4;
     return { ...d, end: rounded, lunchStart: clampLunchStart(d.lunchStart, d.start, rounded, d.lunch) };
@@ -48,6 +52,22 @@ function getMondayOf(dateStr) {
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
   return d;
+}
+
+function getISOWeek(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7);
+}
+
+function currentMondayStr() {
+  const today = new Date();
+  const day = today.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(today.getFullYear(), today.getMonth(), today.getDate() + diff);
+  return m.getFullYear() + "-" + String(m.getMonth() + 1).padStart(2, "0") + "-" + String(m.getDate()).padStart(2, "0");
 }
 
 function addDays(date, n) {
@@ -95,6 +115,7 @@ function buildICS(days, startMonday) {
   ];
 
   days.forEach(function(d, i) {
+    if (d.offDay) return;
     const dayDate = addDays(startMonday, i);
     const dateStr = formatDateLocal(dayDate);
     const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
@@ -178,11 +199,11 @@ export default function App() {
   const [weekly, setWeekly] = useState(40);
   const [carryOver, setCarryOver] = useState(0);
   const [days, setDays] = useState(DAYS.map(defaultDay));
-  const [startDate, setStartDate] = useState("");
+  const [startDate, setStartDate] = useState(currentMondayStr);
   const [exportMsg, setExportMsg] = useState("");
 
   const effectiveTarget = Math.max(0, weekly - carryOver);
-  const totalHours = days.reduce((s, d) => s + dayHours(d.start, d.end, d.lunch), 0);
+  const totalHours = days.reduce((s, d) => s + effectiveHours(d), 0);
   const diff = totalHours - effectiveTarget;
   const pct = Math.min(100, (totalHours / effectiveTarget) * 100);
   const barColor = Math.abs(diff) < 0.1 ? "#22c55e" : diff > 0 ? "#ef4444" : "#f59e0b";
@@ -192,7 +213,7 @@ export default function App() {
       const next = prev.map((d, i) => {
         if (i !== idx) return d;
         const updated = Object.assign({}, d, { [field]: value });
-        if (field !== "locked") {
+        if (field !== "locked" && field !== "offDay" && field !== "offHours") {
           updated.lunchStart = clampLunchStart(updated.lunchStart, updated.start, updated.end, updated.lunch);
         }
         return updated;
@@ -205,17 +226,23 @@ export default function App() {
   const handleWeekly = (val) => {
     const w = Math.max(1, Math.min(80, val));
     setWeekly(w);
-    setDays(prev => prev.map(d => {
-      if (d.locked) return d;
-      const newEnd = Math.min(MAX_END, Math.round((d.start + w / 5 + d.lunch / 60) * 4) / 4);
-      return Object.assign({}, d, { end: newEnd, lunchStart: clampLunchStart(d.lunchStart, d.start, newEnd, d.lunch) });
-    }));
+    setDays(prev => {
+      const fixedHours = prev.reduce((sum, d) => d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
+      const activeCount = prev.filter(d => !d.locked && !d.offDay).length;
+      const perDay = activeCount > 0 ? (w - fixedHours) / activeCount : 0;
+      return prev.map(d => {
+        if (d.locked || d.offDay) return d;
+        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.lunch / 60) * 4) / 4);
+        return Object.assign({}, d, { end: newEnd, lunchStart: clampLunchStart(d.lunchStart, d.start, newEnd, d.lunch) });
+      });
+    });
   };
 
   const handleGoogleCalendar = () => {
     if (!startDate) { setExportMsg("Please pick a start date first."); setTimeout(() => setExportMsg(""), 4000); return; }
     const monday = getMondayOf(startDate);
     days.forEach((d, i) => {
+      if (d.offDay) return;
       buildGCalUrl(d, addDays(monday, i)).forEach(url => window.open(url, "_blank"));
     });
     setExportMsg("Opened Google Calendar tabs!");
@@ -227,10 +254,25 @@ export default function App() {
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
 
         <div style={{ marginBottom: "2rem" }}>
-          <h1 style={{ fontSize: "2.4rem", fontWeight: 800, color: "#f8fafc", marginBottom: 2, letterSpacing: "-0.03em" }}>Weeklie</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: 2 }}>
+            <h1 style={{ fontSize: "2.4rem", fontWeight: 800, color: "#f8fafc", margin: 0, letterSpacing: "-0.03em" }}>Weeklie</h1>
+            <a
+              href="https://tally.so/r/zxNrGM"
+              target="_blank"
+              rel="noopener noreferrer"
+              title="Share feedback"
+              style={{ display: "flex", alignItems: "center", color: "#475569", transition: "color 0.15s" }}
+              onMouseEnter={e => e.currentTarget.style.color = "#94a3b8"}
+              onMouseLeave={e => e.currentTarget.style.color = "#475569"}
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+            </a>
+          </div>
           <p style={{ fontSize: "1rem", color: "#94a3b8", fontWeight: 500, margin: "0 0 8px 0" }}>Weekly Work Planner</p>
           <p style={{ fontSize: "0.88rem", color: "#64748b", margin: 0, maxWidth: 480, lineHeight: 1.6 }}>An easy and simple way to plan your work week schedule, so you always stay on top of your hours.</p>
-          <span style={{ display: "inline-block", marginTop: 8, fontSize: "0.72rem", color: "#334155", fontWeight: 600, letterSpacing: "0.05em" }}>v1.36.0</span>
+          <span style={{ display: "inline-block", marginTop: 8, fontSize: "0.72rem", color: "#334155", fontWeight: 600, letterSpacing: "0.05em" }}>v{__APP_VERSION__}</span>
         </div>
 
         {/* Sticky weekly target */}
@@ -281,37 +323,60 @@ export default function App() {
           const lunchEnd = d.lunch > 0 ? d.lunchStart + d.lunch / 60 : null;
           const lunchMinStart = d.start + 0.5;
           const lunchMaxStart = d.end - d.lunch / 60 - 0.25;
+          const borderColor = d.offDay ? "1.5px solid #f59e0b" : d.locked ? "1.5px solid #6366f1" : "1.5px solid transparent";
           return (
-            <div key={DAYS[i]} style={{ background: "#1e293b", borderRadius: 16, padding: "1.25rem 1.5rem", marginBottom: "1rem", border: d.locked ? "1.5px solid #6366f1" : "1.5px solid transparent" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+            <div key={DAYS[i]} style={{ background: "#1e293b", borderRadius: 16, padding: "1.25rem 1.5rem", marginBottom: "1rem", border: borderColor, opacity: d.offDay ? 0.75 : 1 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: d.offDay ? "0.75rem" : "1rem" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontWeight: 700, fontSize: "1rem", color: "#f8fafc" }}>{DAYS[i]}</span>
-                  <span style={{ background: "#0f172a", padding: "2px 10px", borderRadius: 99, fontSize: "0.8rem", color: "#94a3b8" }}>{dh.toFixed(1)}h</span>
+                  <span style={{ fontWeight: 700, fontSize: "1rem", color: d.offDay ? "#94a3b8" : "#f8fafc" }}>{DAYS[i]}</span>
+                  {d.offDay
+                    ? <span style={{ background: "#f59e0b22", padding: "2px 10px", borderRadius: 99, fontSize: "0.8rem", color: "#f59e0b", fontWeight: 600 }}>Off</span>
+                    : <span style={{ background: "#0f172a", padding: "2px 10px", borderRadius: 99, fontSize: "0.8rem", color: "#94a3b8" }}>{dh.toFixed(1)}h</span>
+                  }
                 </div>
-                <button onClick={() => updateDay(i, "locked", !d.locked)} style={{ background: d.locked ? "#6366f1" : "#334155", border: "none", borderRadius: 8, padding: "4px 10px", color: "#f8fafc", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
-                  {d.locked ? "Locked" : "Lock"}
-                </button>
-              </div>
-              <SliderRow label="Start" value={d.start} min={MIN_START} max={Math.min(d.end - 1, MAX_START)} step={0.25} display={toTime(d.start)} onChange={v => updateDay(i, "start", v)} color="#6366f1" />
-              <SliderRow label="End" value={d.end} min={Math.max(d.start + 1, MIN_END)} max={MAX_END} step={0.25} display={toTime(d.end)} onChange={v => updateDay(i, "end", v)} color="#818cf8" />
-              <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Lunch</span>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {LUNCH_OPTIONS.map(opt => (
-                    <button key={opt} onClick={() => updateDay(i, "lunch", opt)} style={{ background: d.lunch === opt ? "#6366f1" : "#0f172a", color: d.lunch === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
-                      {opt === 0 ? "None" : opt + "m"}
+                <div style={{ display: "flex", gap: 6 }}>
+                  {!d.offDay && (
+                    <button onClick={() => updateDay(i, "locked", !d.locked)} style={{ background: d.locked ? "#6366f1" : "#334155", border: "none", borderRadius: 8, padding: "4px 10px", color: "#f8fafc", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
+                      {d.locked ? "Locked" : "Lock"}
                     </button>
-                  ))}
+                  )}
+                  <button onClick={() => updateDay(i, "offDay", !d.offDay)} style={{ background: d.offDay ? "#f59e0b" : "#334155", border: "none", borderRadius: 8, padding: "4px 10px", color: d.offDay ? "#0f172a" : "#f8fafc", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}>
+                    {d.offDay ? "Off Day" : "Off"}
+                  </button>
                 </div>
               </div>
-              {d.lunch > 0 && (
-                <div style={{ marginTop: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
-                  <SliderRow label="Lunch" value={d.lunchStart} min={lunchMinStart} max={lunchMaxStart} step={0.25} display={toTime(d.lunchStart) + " - " + toTime(lunchEnd)} onChange={v => updateDay(i, "lunchStart", v)} color="#f59e0b" wide={true} />
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 46 }}>
-                    <span>Morning: {dayHours(d.start, d.lunchStart, 0).toFixed(1)}h</span>
-                    <span>Afternoon: {dayHours(lunchEnd, d.end, 0).toFixed(1)}h</span>
-                  </div>
+              {d.offDay ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.78rem", color: "#64748b" }}>Counts as</span>
+                  <button onClick={() => updateDay(i, "offHours", Math.max(0, Math.round((d.offHours - 0.5) * 2) / 2))} style={btnStyle}>-</button>
+                  <span style={{ fontSize: "1.1rem", fontWeight: 700, color: "#f59e0b", minWidth: 46, textAlign: "center" }}>{d.offHours}h</span>
+                  <button onClick={() => updateDay(i, "offHours", Math.min(12, Math.round((d.offHours + 0.5) * 2) / 2))} style={btnStyle}>+</button>
+                  <span style={{ fontSize: "0.72rem", color: "#475569" }}>· not exported to calendar</span>
                 </div>
+              ) : (
+                <>
+                  <SliderRow label="Start" value={d.start} min={MIN_START} max={Math.min(d.end - 1, MAX_START)} step={0.25} display={toTime(d.start)} onChange={v => updateDay(i, "start", v)} color="#6366f1" />
+                  <SliderRow label="End" value={d.end} min={Math.max(d.start + 1, MIN_END)} max={MAX_END} step={0.25} display={toTime(d.end)} onChange={v => updateDay(i, "end", v)} color="#818cf8" />
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Lunch</span>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {LUNCH_OPTIONS.map(opt => (
+                        <button key={opt} onClick={() => updateDay(i, "lunch", opt)} style={{ background: d.lunch === opt ? "#6366f1" : "#0f172a", color: d.lunch === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
+                          {opt === 0 ? "None" : opt + "m"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {d.lunch > 0 && (
+                    <div style={{ marginTop: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
+                      <SliderRow label="Lunch" value={d.lunchStart} min={lunchMinStart} max={lunchMaxStart} step={0.25} display={toTime(d.lunchStart) + " - " + toTime(lunchEnd)} onChange={v => updateDay(i, "lunchStart", v)} color="#f59e0b" wide={true} />
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 46 }}>
+                        <span>Morning: {dayHours(d.start, d.lunchStart, 0).toFixed(1)}h</span>
+                        <span>Afternoon: {dayHours(lunchEnd, d.end, 0).toFixed(1)}h</span>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           );
@@ -321,13 +386,7 @@ export default function App() {
         <div style={{ background: "#1e293b", borderRadius: 16, padding: "1.5rem", marginTop: "0.5rem" }}>
           <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#f8fafc", marginBottom: "1rem" }}>Export to Calendar</div>
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ fontSize: "0.8rem", color: "#94a3b8", display: "block", marginBottom: 8 }}>Week starting:</label>
-            <InlineDatePicker value={startDate} onChange={setStartDate} />
-            {startDate && (
-              <span style={{ fontSize: "0.78rem", color: "#64748b", display: "block", marginTop: 8 }}>
-                {"Week of " + getMondayOf(startDate).toLocaleDateString("en-DE", { day: "numeric", month: "short", year: "numeric" })}
-              </span>
-            )}
+            <CWPicker value={startDate} onChange={setStartDate} />
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button onClick={handleGoogleCalendar} style={{ border: "none", borderRadius: 10, padding: "10px 18px", color: "#fff", fontSize: "0.85rem", cursor: "pointer", fontWeight: 600, background: "#4285f4" }}>
@@ -355,36 +414,27 @@ function SliderRow({ label, value, min, max, step, display, onChange, color, wid
   );
 }
 
-function InlineDatePicker({ value, onChange }) {
-  const today = new Date();
-  const init = value ? new Date(value + "T00:00:00") : today;
-  const [view, setView] = useState({ month: init.getMonth(), year: init.getFullYear() });
-  const firstDay = new Date(view.year, view.month, 1);
-  const startOffset = (firstDay.getDay() + 6) % 7;
-  const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
-  const cells = [];
-  for (let i = 0; i < startOffset; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  const prevMonth = () => setView(v => v.month === 0 ? { month: 11, year: v.year - 1 } : { month: v.month - 1, year: v.year });
-  const nextMonth = () => setView(v => v.month === 11 ? { month: 0, year: v.year + 1 } : { month: v.month + 1, year: v.year });
-  const selectDay = (d) => onChange(view.year + "-" + String(view.month + 1).padStart(2,"0") + "-" + String(d).padStart(2,"0"));
+function CWPicker({ value, onChange }) {
+  const monday = new Date(value + "T00:00:00");
+  const friday = addDays(monday, 4);
+  const cw = getISOWeek(monday);
+
+  const navigate = (weeks) => {
+    const next = addDays(monday, weeks * 7);
+    onChange(next.getFullYear() + "-" + String(next.getMonth() + 1).padStart(2, "0") + "-" + String(next.getDate()).padStart(2, "0"));
+  };
+
+  const monStr = monday.toLocaleDateString("en-DE", { day: "numeric", month: "short" });
+  const friStr = friday.toLocaleDateString("en-DE", { day: "numeric", month: "short", year: "numeric" });
+
   return (
-    <div style={{ background: "#0f172a", borderRadius: 12, padding: "12px", display: "inline-block", border: "1.5px solid #334155" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-        <button onClick={prevMonth} style={navBtn}>&#8249;</button>
-        <span style={{ fontWeight: 700, fontSize: "0.85rem", color: "#f8fafc" }}>{MONTHS[view.month]} {view.year}</span>
-        <button onClick={nextMonth} style={navBtn}>&#8250;</button>
+    <div style={{ display: "inline-flex", alignItems: "center", gap: 14, background: "#0f172a", borderRadius: 12, padding: "10px 14px", border: "1.5px solid #334155" }}>
+      <button onClick={() => navigate(-1)} style={navBtn}>&#8249;</button>
+      <div style={{ textAlign: "center", minWidth: 170 }}>
+        <div style={{ fontSize: "1rem", fontWeight: 700, color: "#f8fafc" }}>CW {String(cw).padStart(2, "0")}</div>
+        <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 3 }}>{monStr} – {friStr}</div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 32px)", gap: 2 }}>
-        {["Mo","Tu","We","Th","Fr","Sa","Su"].map(d => <div key={d} style={{ textAlign: "center", fontSize: "0.7rem", color: "#475569", fontWeight: 700, padding: "2px 0" }}>{d}</div>)}
-        {cells.map((d, i) => {
-          if (!d) return <div key={"e" + i} />;
-          const dateStr = view.year + "-" + String(view.month + 1).padStart(2,"0") + "-" + String(d).padStart(2,"0");
-          const isSelected = value === dateStr;
-          const isToday = today.getFullYear() === view.year && today.getMonth() === view.month && today.getDate() === d;
-          return <button key={d} onClick={() => selectDay(d)} style={{ width: 32, height: 32, borderRadius: 8, border: "none", background: isSelected ? "#6366f1" : isToday ? "#1e3a5f" : "transparent", color: isSelected ? "#fff" : isToday ? "#93c5fd" : "#cbd5e1", fontWeight: isSelected || isToday ? 700 : 400, fontSize: "0.82rem", cursor: "pointer" }}>{d}</button>;
-        })}
-      </div>
+      <button onClick={() => navigate(1)} style={navBtn}>&#8250;</button>
     </div>
   );
 }
