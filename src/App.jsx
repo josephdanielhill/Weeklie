@@ -388,7 +388,7 @@ export default function App() {
           <div style={{ marginBottom: "1rem" }}>
             <CWPicker value={startDate} onChange={setStartDate} />
           </div>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
             <button onClick={handleGoogleCalendar} style={{ border: "none", borderRadius: 10, padding: "10px 18px", color: "#fff", fontSize: "0.85rem", cursor: "pointer", fontWeight: 600, background: "#4285f4" }}>
               Add to Google Calendar
             </button>
@@ -428,9 +428,9 @@ function CWPicker({ value, onChange }) {
   const friStr = friday.toLocaleDateString("en-DE", { day: "numeric", month: "short", year: "numeric" });
 
   return (
-    <div style={{ display: "inline-flex", alignItems: "center", gap: 14, background: "#0f172a", borderRadius: 12, padding: "10px 14px", border: "1.5px solid #334155" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, background: "#0f172a", borderRadius: 12, padding: "10px 14px", border: "1.5px solid #334155" }}>
       <button onClick={() => navigate(-1)} style={navBtn}>&#8249;</button>
-      <div style={{ textAlign: "center", minWidth: 170 }}>
+      <div style={{ textAlign: "center", flex: 1 }}>
         <div style={{ fontSize: "1rem", fontWeight: 700, color: "#f8fafc" }}>CW {String(cw).padStart(2, "0")}</div>
         <div style={{ fontSize: "0.75rem", color: "#64748b", marginTop: 3 }}>{monStr} – {friStr}</div>
       </div>
