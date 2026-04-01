@@ -300,6 +300,16 @@ export default function LandingPage() {
       {/* Nav */}
       <nav style={{ padding: '1.25rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" width="32" height="32" aria-hidden="true">
+            <defs>
+              <linearGradient id="nav-logo-bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#6366f1"/>
+                <stop offset="100%" stopColor="#4f46e5"/>
+              </linearGradient>
+            </defs>
+            <rect width="32" height="32" rx="8" fill="url(#nav-logo-bg)"/>
+            <text x="16" y="23" fontFamily="Inter, system-ui, -apple-system, sans-serif" fontSize="20" fontWeight="800" textAnchor="middle" letterSpacing="-0.04em" fill="#ffffff">W</text>
+          </svg>
           <span style={{ fontSize: '1.2rem', fontWeight: 800, color: TEXT, letterSpacing: '-0.03em' }}>Weeklie</span>
         </div>
         <CTAButton>Open App</CTAButton>

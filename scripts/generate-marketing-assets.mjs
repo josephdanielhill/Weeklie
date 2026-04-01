@@ -72,36 +72,27 @@ const BASE_CSS = `
 // ── Logo SVG inline ────────────────────────────────────────────────────────
 const LOGO_SVG = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" width="36" height="36">
-  <rect width="32" height="32" rx="8" fill="#1e293b"/>
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a5b4fc"/>
+    <linearGradient id="logo-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#4f46e5"/>
     </linearGradient>
   </defs>
-  <rect x="2"  y="4"  width="4" height="22" rx="2" fill="url(#g)"/>
-  <rect x="8"  y="12" width="4" height="14" rx="2" fill="url(#g)" opacity="0.78"/>
-  <rect x="14" y="18" width="4" height="8"  rx="2" fill="url(#g)" opacity="0.55"/>
-  <rect x="20" y="12" width="4" height="14" rx="2" fill="url(#g)" opacity="0.78"/>
-  <rect x="26" y="4"  width="4" height="22" rx="2" fill="url(#g)"/>
-  <rect x="2" y="27" width="28" height="2" rx="1" fill="#334155"/>
+  <rect width="32" height="32" rx="8" fill="url(#logo-bg)"/>
+  <text x="16" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" text-anchor="middle" letter-spacing="-0.04em" fill="#ffffff">W</text>
 </svg>`;
 
 // Large decorative W mark for backgrounds
 const BIG_W_SVG = (size = 320, opacity = 0.06) => `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" width="${size}" height="${size}" style="opacity:${opacity}">
   <defs>
-    <linearGradient id="gw" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a5b4fc"/>
+    <linearGradient id="big-w-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#4f46e5"/>
     </linearGradient>
   </defs>
-  <rect x="2"  y="4"  width="4" height="22" rx="2" fill="url(#gw)"/>
-  <rect x="8"  y="12" width="4" height="14" rx="2" fill="url(#gw)" opacity="0.78"/>
-  <rect x="14" y="18" width="4" height="8"  rx="2" fill="url(#gw)" opacity="0.55"/>
-  <rect x="20" y="12" width="4" height="14" rx="2" fill="url(#gw)" opacity="0.78"/>
-  <rect x="26" y="4"  width="4" height="22" rx="2" fill="url(#gw)"/>
-  <rect x="2" y="27" width="28" height="2" rx="1" fill="#334155"/>
+  <rect width="32" height="32" rx="8" fill="url(#big-w-bg)"/>
+  <text x="16" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="800" text-anchor="middle" letter-spacing="-0.04em" fill="#ffffff">W</text>
 </svg>`;
 
 // ── Asset definitions ──────────────────────────────────────────────────────

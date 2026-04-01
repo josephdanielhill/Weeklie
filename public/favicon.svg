@@ -1,22 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
-  <rect width="32" height="32" rx="8" fill="#1e293b"/>
   <defs>
-    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#a5b4fc"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
       <stop offset="100%" stop-color="#4f46e5"/>
     </linearGradient>
   </defs>
-  <!-- 5 bars (Mon–Fri) forming a W shape, all anchored to baseline y=26 -->
-  <!-- Bar 1 Mon  h=22 → y=4  -->
-  <rect x="2"  y="4"  width="4" height="22" rx="2" fill="url(#g)"/>
-  <!-- Bar 2 Tue  h=14 → y=12 -->
-  <rect x="8"  y="12" width="4" height="14" rx="2" fill="url(#g)" opacity="0.78"/>
-  <!-- Bar 3 Wed  h=8  → y=18 (the W dip) -->
-  <rect x="14" y="18" width="4" height="8"  rx="2" fill="url(#g)" opacity="0.55"/>
-  <!-- Bar 4 Thu  h=14 → y=12 -->
-  <rect x="20" y="12" width="4" height="14" rx="2" fill="url(#g)" opacity="0.78"/>
-  <!-- Bar 5 Fri  h=22 → y=4  -->
-  <rect x="26" y="4"  width="4" height="22" rx="2" fill="url(#g)"/>
-  <!-- baseline -->
-  <rect x="2" y="27" width="28" height="2" rx="1" fill="#334155"/>
+  <rect width="32" height="32" rx="8" fill="url(#bg)"/>
+  <text
+    x="16" y="23"
+    font-family="Inter, system-ui, -apple-system, sans-serif"
+    font-size="20"
+    font-weight="800"
+    text-anchor="middle"
+    letter-spacing="-0.04em"
+    fill="#ffffff"
+  >W</text>
 </svg>
