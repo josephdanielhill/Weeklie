@@ -255,6 +255,16 @@ export default function App() {
 
         <div style={{ marginBottom: "2rem" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: 2 }}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" width="36" height="36" aria-hidden="true">
+              <defs>
+                <linearGradient id="app-logo-bg" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stopColor="#6366f1"/>
+                  <stop offset="100%" stopColor="#4f46e5"/>
+                </linearGradient>
+              </defs>
+              <rect width="32" height="32" rx="8" fill="url(#app-logo-bg)"/>
+              <text x="16" y="23" fontFamily="Inter, system-ui, -apple-system, sans-serif" fontSize="20" fontWeight="800" textAnchor="middle" letterSpacing="-0.04em" fill="#ffffff">W</text>
+            </svg>
             <h1 style={{ fontSize: "2.4rem", fontWeight: 800, color: "#f8fafc", margin: 0, letterSpacing: "-0.03em" }}>Weeklie</h1>
             <a
               href="https://tally.so/r/zxNrGM"
