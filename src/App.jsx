@@ -32,6 +32,17 @@ function clampPauseStart(pauseStart, start, end, pause) {
   return Math.min(maxLS, Math.max(minLS, pauseStart));
 }
 
+function redistributeAllToTarget(days, target) {
+  const fixedHours = days.reduce((sum, d) => d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
+  const activeCount = days.filter(d => !d.locked && !d.offDay).length;
+  const perDay = activeCount > 0 ? (target - fixedHours) / activeCount : 0;
+  return days.map(d => {
+    if (d.locked || d.offDay) return d;
+    const newEnd = Math.round(Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.pause / 60)) * 4) / 4;
+    return Object.assign({}, d, { end: newEnd, pauseStart: clampPauseStart(d.pauseStart, d.start, newEnd, d.pause) });
+  });
+}
+
 function redistribute(days, changedIdx, weeklyTarget) {
   const unlocked = days.map((d, i) => i !== changedIdx && !d.locked && !d.offDay ? i : null).filter(i => i !== null);
   const lockedHours = days.reduce((sum, d, i) => i === changedIdx || d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
@@ -226,15 +237,15 @@ export default function App() {
   const handleWeekly = (val) => {
     const w = Math.max(1, Math.min(80, val));
     setWeekly(w);
-    setDays(prev => {
-      const fixedHours = prev.reduce((sum, d) => d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
-      const activeCount = prev.filter(d => !d.locked && !d.offDay).length;
-      const perDay = activeCount > 0 ? (w - fixedHours) / activeCount : 0;
-      return prev.map(d => {
-        if (d.locked || d.offDay) return d;
-        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.pause / 60) * 4) / 4);
-        return Object.assign({}, d, { end: newEnd, pauseStart: clampPauseStart(d.pauseStart, d.start, newEnd, d.pause) });
-      });
+    setDays(prev => redistributeAllToTarget(prev, w));
+  };
+
+  const handleCarryOver = (delta) => {
+    setCarryOver(prevCarryOver => {
+      const newCarryOver = Math.round((prevCarryOver + delta) * 60) / 60;
+      const newEffectiveTarget = Math.max(0, weekly - newCarryOver);
+      setDays(prev => redistributeAllToTarget(prev, newEffectiveTarget));
+      return newCarryOver;
     });
   };
 
@@ -317,7 +328,7 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <button onClick={() => handleCarryOver(-1/60)} style={btnStyle}>-</button>
                 <span style={{ fontSize: "1.5rem", fontWeight: 700, minWidth: 80, textAlign: "center", color: carryOver > 0 ? "#22c55e" : carryOver < 0 ? "#ef4444" : "#f8fafc" }}>
-                  {carryOver > 0 ? "+" : ""}{Math.floor(Math.abs(carryOver))}h {String(Math.round((Math.abs(carryOver) % 1) * 60)).padStart(2,"0")}m{carryOver < 0 ? " owed" : ""}
+                  {carryOver > 0 ? "+" : carryOver < 0 ? "-" : ""}{Math.floor(Math.abs(carryOver))}h {String(Math.round((Math.abs(carryOver) % 1) * 60)).padStart(2,"0")}m
                 </span>
                 <button onClick={() => handleCarryOver(1/60)} style={btnStyle}>+</button>
               </div>
@@ -336,7 +347,7 @@ export default function App() {
               </div>
               {carryOver !== 0 && (
                 <div style={{ fontSize: "0.72rem", color: "#475569", marginTop: 5 }}>
-                  {carryOver > 0 ? "+" + carryOver.toFixed(1) + "h carry-over reduces target to " + effectiveTarget.toFixed(1) + "h" : carryOver.toFixed(1) + "h carry-over increases target to " + effectiveTarget.toFixed(1) + "h"}
+                  {carryOver > 0 ? "+" + carryOver.toFixed(1) + "h banked — reduces target to " + effectiveTarget.toFixed(1) + "h" : Math.abs(carryOver).toFixed(1) + "h owed — increases target to " + effectiveTarget.toFixed(1) + "h"}
                 </div>
               )}
             </div>
