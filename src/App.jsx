@@ -238,6 +238,22 @@ export default function App() {
     });
   };
 
+  const handleCarryOver = (delta) => {
+    const newCarryOver = Math.round((carryOver + delta) * 60) / 60;
+    setCarryOver(newCarryOver);
+    const newEffectiveTarget = Math.max(0, weekly - newCarryOver);
+    setDays(prev => {
+      const fixedHours = prev.reduce((sum, d) => d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
+      const activeCount = prev.filter(d => !d.locked && !d.offDay).length;
+      const perDay = activeCount > 0 ? (newEffectiveTarget - fixedHours) / activeCount : 0;
+      return prev.map(d => {
+        if (d.locked || d.offDay) return d;
+        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.pause / 60) * 4) / 4);
+        return Object.assign({}, d, { end: newEnd, pauseStart: clampPauseStart(d.pauseStart, d.start, newEnd, d.pause) });
+      });
+    });
+  };
+
   const handleGoogleCalendar = () => {
     if (!startDate) { setExportMsg("Please pick a start date first."); setTimeout(() => setExportMsg(""), 4000); return; }
     const monday = getMondayOf(startDate);
@@ -299,11 +315,11 @@ export default function App() {
             <div style={{ borderLeft: "1px solid #334155", paddingLeft: "1.25rem" }}>
               <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Carry-over</div>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => setCarryOver(v => Math.round((v - 1/60) * 60) / 60)} style={btnStyle}>-</button>
+                <button onClick={() => handleCarryOver(-1/60)} style={btnStyle}>-</button>
                 <span style={{ fontSize: "1.5rem", fontWeight: 700, minWidth: 80, textAlign: "center", color: carryOver > 0 ? "#22c55e" : carryOver < 0 ? "#ef4444" : "#f8fafc" }}>
                   {carryOver > 0 ? "+" : ""}{Math.floor(Math.abs(carryOver))}h {String(Math.round((Math.abs(carryOver) % 1) * 60)).padStart(2,"0")}m{carryOver < 0 ? " owed" : ""}
                 </span>
-                <button onClick={() => setCarryOver(v => Math.round((v + 1/60) * 60) / 60)} style={btnStyle}>+</button>
+                <button onClick={() => handleCarryOver(1/60)} style={btnStyle}>+</button>
               </div>
             </div>
             <div style={{ flex: 1, minWidth: 180 }}>
