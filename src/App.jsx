@@ -249,22 +249,6 @@ export default function App() {
     });
   };
 
-  const handleCarryOver = (delta) => {
-    const newCarryOver = Math.round((carryOver + delta) * 60) / 60;
-    setCarryOver(newCarryOver);
-    const newEffectiveTarget = Math.max(0, weekly - newCarryOver);
-    setDays(prev => {
-      const fixedHours = prev.reduce((sum, d) => d.locked || d.offDay ? sum + effectiveHours(d) : sum, 0);
-      const activeCount = prev.filter(d => !d.locked && !d.offDay).length;
-      const perDay = activeCount > 0 ? (newEffectiveTarget - fixedHours) / activeCount : 0;
-      return prev.map(d => {
-        if (d.locked || d.offDay) return d;
-        const newEnd = Math.min(MAX_END, Math.round((d.start + perDay + d.pause / 60) * 4) / 4);
-        return Object.assign({}, d, { end: newEnd, pauseStart: clampPauseStart(d.pauseStart, d.start, newEnd, d.pause) });
-      });
-    });
-  };
-
   const handleGoogleCalendar = () => {
     if (!startDate) { setExportMsg("Please pick a start date first."); setTimeout(() => setExportMsg(""), 4000); return; }
     const monday = getMondayOf(startDate);
