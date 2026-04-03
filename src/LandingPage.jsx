@@ -567,6 +567,8 @@ export default function LandingPage() {
         <span style={{ fontWeight: 700, color: TEXT3 }}>Weeklie</span>
         {' '}· Weekly Work Planner ·{' '}
         <a href="https://tally.so/r/zxNrGM" target="_blank" rel="noopener noreferrer" style={{ color: TEXT4, textDecoration: 'underline' }}>Send feedback</a>
+        {' '}·{' '}
+        <a href="https://scrapbook.josephhill.co/3+-+Areas/scrapbook/Projects/pages/Weeklie" target="_blank" rel="noopener noreferrer" style={{ color: TEXT4, textDecoration: 'underline' }}>Changelog</a>
       </footer>
 
     </div>
