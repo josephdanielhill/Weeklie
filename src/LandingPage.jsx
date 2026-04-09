@@ -233,7 +233,7 @@ function MockCWExport() {
         </div>
       </div>
       <p style={{ fontSize: '0.72rem', color: TEXT4, marginTop: 10, marginBottom: 0 }}>
-        Days with a pause export 3 events: morning block, pause, and afternoon block.
+        Days with pauses export work blocks and pause events (one event per block and pause).
       </p>
     </div>
   );
