@@ -6,6 +6,45 @@ const MAX_START = 11;
 const MIN_END = 13;
 const MAX_END = 22;
 const PAUSE_OPTIONS = [0, 15, 30, 45, 60, 80, 100, 120, 140];
+const MAX_PAUSES = 5;
+const MIN_WORK_BLOCK_MINS = 30;
+
+function totalPauseMins(pauses) {
+  return pauses.reduce((sum, p) => sum + p.duration, 0);
+}
+
+function clampAllPauses(pauses, dayStart, dayEnd) {
+  const sorted = [...pauses].sort((a, b) => a.start - b.start);
+  const result = [];
+  let cursor = dayStart + MIN_WORK_BLOCK_MINS / 60;
+  for (const p of sorted) {
+    const pDurH = p.duration / 60;
+    const latestStart = dayEnd - pDurH - MIN_WORK_BLOCK_MINS / 60;
+    const clampedStart = Math.min(latestStart, Math.max(cursor, p.start));
+    result.push({ ...p, start: clampedStart });
+    cursor = clampedStart + pDurH + MIN_WORK_BLOCK_MINS / 60;
+  }
+  return result;
+}
+
+function defaultNewPause(d) {
+  const sorted = clampAllPauses(d.pauses, d.start, d.end);
+  const blocks = [];
+  let cursor = d.start;
+  for (const p of sorted) {
+    blocks.push([cursor, p.start]);
+    cursor = p.start + p.duration / 60;
+  }
+  blocks.push([cursor, d.end]);
+  const best = blocks.reduce((b, c) => (c[1] - c[0] > b[1] - b[0] ? c : b), blocks[0]);
+  return Math.round(((best[0] + best[1]) / 2) * 4) / 4;
+}
+
+function canAddPause(d) {
+  if (d.pauses.length >= MAX_PAUSES) return false;
+  const totalWorkH = d.end - d.start - totalPauseMins(d.pauses) / 60;
+  return totalWorkH >= (MIN_WORK_BLOCK_MINS + 30) / 60;
+}
 
 function toTime(h) {
   const totalMins = Math.round(h * 60 / 15) * 15;
@@ -19,17 +58,11 @@ function dayHours(start, end, pause) {
 }
 
 function defaultDay() {
-  return { start: 8, end: 17, pause: 30, pauseStart: 12, locked: false, offDay: false, offHours: 8 };
+  return { start: 8, end: 17, pauses: [{ duration: 30, start: 12 }], locked: false, offDay: false, offHours: 8 };
 }
 
 function effectiveHours(d) {
-  return d.offDay ? d.offHours : dayHours(d.start, d.end, d.pause);
-}
-
-function clampPauseStart(pauseStart, start, end, pause) {
-  const minLS = start + 0.5;
-  const maxLS = end - pause / 60 - 0.25;
-  return Math.min(maxLS, Math.max(minLS, pauseStart));
+  return d.offDay ? d.offHours : dayHours(d.start, d.end, totalPauseMins(d.pauses));
 }
 
 function redistributeAllToTarget(days, target) {
@@ -38,8 +71,9 @@ function redistributeAllToTarget(days, target) {
   const perDay = activeCount > 0 ? (target - fixedHours) / activeCount : 0;
   return days.map(d => {
     if (d.locked || d.offDay) return d;
-    const newEnd = Math.round(Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.pause / 60)) * 4) / 4;
-    return Object.assign({}, d, { end: newEnd, pauseStart: clampPauseStart(d.pauseStart, d.start, newEnd, d.pause) });
+    const pauseH = totalPauseMins(d.pauses) / 60;
+    const newEnd = Math.round(Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + pauseH)) * 4) / 4;
+    return Object.assign({}, d, { end: newEnd, pauses: clampAllPauses(d.pauses, d.start, newEnd) });
   });
 }
 
@@ -51,9 +85,10 @@ function redistribute(days, changedIdx, weeklyTarget) {
   const perDay = remaining / unlocked.length;
   return days.map((d, i) => {
     if (i === changedIdx || d.locked || d.offDay || !unlocked.includes(i)) return d;
-    const newEnd = Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + d.pause / 60));
+    const pauseH = totalPauseMins(d.pauses) / 60;
+    const newEnd = Math.min(MAX_END, Math.max(MIN_END, d.start + perDay + pauseH));
     const rounded = Math.round(newEnd * 4) / 4;
-    return { ...d, end: rounded, pauseStart: clampPauseStart(d.pauseStart, d.start, rounded, d.pause) };
+    return { ...d, end: rounded, pauses: clampAllPauses(d.pauses, d.start, rounded) };
   });
 }
 
@@ -129,7 +164,6 @@ function buildICS(days, startMonday) {
     if (d.offDay) return;
     const dayDate = addDays(startMonday, i);
     const dateStr = formatDateLocal(dayDate);
-    const pauseEnd = d.pause > 0 ? d.pauseStart + d.pause / 60 : null;
 
     function addEvent(uid, start, end, title, desc) {
       lines.push("BEGIN:VEVENT");
@@ -141,12 +175,20 @@ function buildICS(days, startMonday) {
       lines.push("END:VEVENT");
     }
 
-    if (d.pause > 0) {
-      addEvent("weeklie-" + dateStr + "-" + i + "-morning", d.start, d.pauseStart, "Planned Working Block", "Morning block " + dayHours(d.start, d.pauseStart, 0).toFixed(1) + "h");
-      addEvent("weeklie-" + dateStr + "-" + i + "-pause", d.pauseStart, pauseEnd, "Pause", d.pause + " min pause");
-      addEvent("weeklie-" + dateStr + "-" + i + "-afternoon", pauseEnd, d.end, "Planned Working Block", "Afternoon block " + dayHours(pauseEnd, d.end, 0).toFixed(1) + "h");
-    } else {
+    const sortedPauses = clampAllPauses(d.pauses, d.start, d.end);
+
+    if (sortedPauses.length === 0) {
       addEvent("weeklie-" + dateStr + "-" + i + "-work", d.start, d.end, "Planned Working Block", "Full day " + dayHours(d.start, d.end, 0).toFixed(1) + "h");
+    } else {
+      let cursor = d.start;
+      sortedPauses.forEach(function(p, pi) {
+        const pauseEnd = p.start + p.duration / 60;
+        const blockLabel = pi === 0 ? "Morning" : "Block " + (pi + 1);
+        addEvent("weeklie-" + dateStr + "-" + i + "-block" + pi, cursor, p.start, "Planned Working Block", blockLabel + " " + dayHours(cursor, p.start, 0).toFixed(1) + "h");
+        addEvent("weeklie-" + dateStr + "-" + i + "-pause" + pi, p.start, pauseEnd, "Pause", p.duration + " min pause");
+        cursor = pauseEnd;
+      });
+      addEvent("weeklie-" + dateStr + "-" + i + "-blockfinal", cursor, d.end, "Planned Working Block", "Afternoon " + dayHours(cursor, d.end, 0).toFixed(1) + "h");
     }
   });
 
@@ -156,7 +198,6 @@ function buildICS(days, startMonday) {
 
 function buildGCalUrl(d, dayDate) {
   const dateStr = formatDateLocal(dayDate);
-  const pauseEnd = d.pause > 0 ? d.pauseStart + d.pause / 60 : null;
   const urls = [];
 
   function makeUrl(start, end, title, details) {
@@ -165,12 +206,20 @@ function buildGCalUrl(d, dayDate) {
     return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(title) + "&dates=" + dateStr + "T" + s + "/" + dateStr + "T" + e + "&details=" + encodeURIComponent(details) + "&ctz=Europe/Berlin";
   }
 
-  if (d.pause > 0) {
-    urls.push(makeUrl(d.start, d.pauseStart, "Planned Working Block", "Morning block " + dayHours(d.start, d.pauseStart, 0).toFixed(1) + "h"));
-    urls.push(makeUrl(d.pauseStart, pauseEnd, "Pause", d.pause + " min pause"));
-    urls.push(makeUrl(pauseEnd, d.end, "Planned Working Block", "Afternoon block " + dayHours(pauseEnd, d.end, 0).toFixed(1) + "h"));
-  } else {
+  const sortedPauses = clampAllPauses(d.pauses, d.start, d.end);
+
+  if (sortedPauses.length === 0) {
     urls.push(makeUrl(d.start, d.end, "Planned Working Block", "Full day " + dayHours(d.start, d.end, 0).toFixed(1) + "h"));
+  } else {
+    let cursor = d.start;
+    sortedPauses.forEach(function(p, pi) {
+      const pauseEnd = p.start + p.duration / 60;
+      const blockLabel = pi === 0 ? "Morning" : "Block " + (pi + 1);
+      urls.push(makeUrl(cursor, p.start, "Planned Working Block", blockLabel + " " + dayHours(cursor, p.start, 0).toFixed(1) + "h"));
+      urls.push(makeUrl(p.start, pauseEnd, "Pause", p.duration + " min pause"));
+      cursor = pauseEnd;
+    });
+    urls.push(makeUrl(cursor, d.end, "Planned Working Block", "Afternoon " + dayHours(cursor, d.end, 0).toFixed(1) + "h"));
   }
   return urls;
 }
@@ -225,7 +274,7 @@ export default function App() {
         if (i !== idx) return d;
         const updated = Object.assign({}, d, { [field]: value });
         if (field !== "locked" && field !== "offDay" && field !== "offHours") {
-          updated.pauseStart = clampPauseStart(updated.pauseStart, updated.start, updated.end, updated.pause);
+          updated.pauses = clampAllPauses(updated.pauses, updated.start, updated.end);
         }
         return updated;
       });
@@ -340,10 +389,7 @@ export default function App() {
 
         {/* Days */}
         {days.map((d, i) => {
-          const dh = dayHours(d.start, d.end, d.pause);
-          const pauseEnd = d.pause > 0 ? d.pauseStart + d.pause / 60 : null;
-          const pauseMinStart = d.start + 0.5;
-          const pauseMaxStart = d.end - d.pause / 60 - 0.25;
+          const dh = dayHours(d.start, d.end, totalPauseMins(d.pauses));
           const borderColor = d.offDay ? "1.5px solid #f59e0b" : d.locked ? "1.5px solid #6366f1" : "1.5px solid transparent";
           return (
             <div key={DAYS[i]} style={{ background: "#1e293b", borderRadius: 16, padding: "1.25rem 1.5rem", marginBottom: "1rem", border: borderColor, opacity: d.offDay ? 0.75 : 1 }}>
@@ -378,25 +424,75 @@ export default function App() {
                 <>
                   <SliderRow label="Start" value={d.start} min={MIN_START} max={Math.min(d.end - 1, MAX_START)} step={0.25} display={toTime(d.start)} onChange={v => updateDay(i, "start", v)} color="#6366f1" />
                   <SliderRow label="End" value={d.end} min={Math.max(d.start + 1, MIN_END)} max={MAX_END} step={0.25} display={toTime(d.end)} onChange={v => updateDay(i, "end", v)} color="#818cf8" />
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 10, flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "0.78rem", color: "#64748b", width: 36 }}>Pause</span>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {PAUSE_OPTIONS.map(opt => (
-                        <button key={opt} onClick={() => updateDay(i, "pause", opt)} style={{ background: d.pause === opt ? "#6366f1" : "#0f172a", color: d.pause === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "4px 9px", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}>
-                          {opt === 0 ? "None" : opt + "m"}
+                  <div style={{ marginTop: 10 }}>
+                    {d.pauses.length === 0 ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: "0.78rem", color: "#64748b" }}>No pauses</span>
+                        <button
+                          onClick={() => updateDay(i, "pauses", [{ duration: 30, start: defaultNewPause(d) }])}
+                          style={{ background: "#1e3a5f", border: "1px dashed #334155", borderRadius: 8, padding: "4px 10px", color: "#7dd3fc", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600 }}
+                        >
+                          + Add pause
                         </button>
-                      ))}
-                    </div>
-                  </div>
-                  {d.pause > 0 && (
-                    <div style={{ marginTop: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
-                      <SliderRow label="Pause" value={d.pauseStart} min={pauseMinStart} max={pauseMaxStart} step={0.25} display={toTime(d.pauseStart) + " - " + toTime(pauseEnd)} onChange={v => updateDay(i, "pauseStart", v)} color="#f59e0b" wide={true} />
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 46 }}>
-                        <span>Morning: {dayHours(d.start, d.pauseStart, 0).toFixed(1)}h</span>
-                        <span>Afternoon: {dayHours(pauseEnd, d.end, 0).toFixed(1)}h</span>
                       </div>
-                    </div>
-                  )}
+                    ) : (
+                      <>
+                        {clampAllPauses(d.pauses, d.start, d.end).map((cp, pi) => {
+                          const pauseEnd = cp.start + cp.duration / 60;
+                          const sortedPauses = clampAllPauses(d.pauses, d.start, d.end);
+                          const prevEnd = pi === 0 ? d.start : sortedPauses[pi - 1].start + sortedPauses[pi - 1].duration / 60;
+                          const nextStart = pi === sortedPauses.length - 1 ? d.end : sortedPauses[pi + 1].start;
+                          const sliderMin = prevEnd + MIN_WORK_BLOCK_MINS / 60;
+                          const sliderMax = nextStart - cp.duration / 60 - MIN_WORK_BLOCK_MINS / 60;
+                          return (
+                            <div key={pi} style={{ marginBottom: 8, background: "#0f172a", borderRadius: 10, padding: "10px 12px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
+                                <span style={{ fontSize: "0.72rem", color: "#64748b", marginRight: 2 }}>
+                                  {d.pauses.length === 1 ? "Pause" : "Pause " + (pi + 1)}
+                                </span>
+                                {PAUSE_OPTIONS.filter(opt => opt > 0).map(opt => (
+                                  <button key={opt}
+                                    onClick={() => {
+                                      const newPauses = d.pauses.map((pp, pj) => pj === pi ? { ...pp, duration: opt } : pp);
+                                      updateDay(i, "pauses", newPauses);
+                                    }}
+                                    style={{ background: cp.duration === opt ? "#6366f1" : "#1e293b", color: cp.duration === opt ? "#fff" : "#94a3b8", border: "none", borderRadius: 8, padding: "3px 8px", fontSize: "0.72rem", cursor: "pointer", fontWeight: 600 }}
+                                  >
+                                    {opt}m
+                                  </button>
+                                ))}
+                                <button
+                                  onClick={() => updateDay(i, "pauses", d.pauses.filter((_, pj) => pj !== pi))}
+                                  style={{ marginLeft: "auto", background: "#450a0a", border: "none", borderRadius: 8, padding: "3px 8px", color: "#f87171", fontSize: "0.75rem", cursor: "pointer", fontWeight: 700 }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                              <SliderRow label="" value={cp.start} min={sliderMin} max={sliderMax} step={0.25} display={toTime(cp.start) + " – " + toTime(pauseEnd)} onChange={v => {
+                                const newPauses = d.pauses.map((pp, pj) => pj === pi ? { ...pp, start: v } : pp);
+                                updateDay(i, "pauses", newPauses);
+                              }} color="#f59e0b" wide={true} />
+                              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.72rem", color: "#475569", marginTop: 4, paddingLeft: 10 }}>
+                                <span>Before: {dayHours(prevEnd, cp.start, 0).toFixed(1)}h</span>
+                                <span>After: {dayHours(pauseEnd, nextStart, 0).toFixed(1)}h</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {canAddPause(d) && (
+                          <button
+                            onClick={() => {
+                              const newPauses = [...d.pauses, { duration: 30, start: defaultNewPause(d) }];
+                              updateDay(i, "pauses", newPauses);
+                            }}
+                            style={{ background: "#1e3a5f", border: "1px dashed #334155", borderRadius: 8, padding: "5px 12px", color: "#7dd3fc", fontSize: "0.75rem", cursor: "pointer", fontWeight: 600, marginTop: 4 }}
+                          >
+                            + Add pause
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </>
               )}
             </div>
@@ -416,7 +512,7 @@ export default function App() {
             <ICSDownloadLink days={days} startDate={startDate} onError={msg => { setExportMsg(msg); setTimeout(() => setExportMsg(""), 4000); }} />
           </div>
           {exportMsg && <div style={{ marginTop: 10, fontSize: "0.82rem", color: "#22c55e", fontWeight: 600 }}>{exportMsg}</div>}
-          <p style={{ fontSize: "0.75rem", color: "#475569", marginTop: 10, marginBottom: 0 }}>Days with a pause export 3 events: morning block, pause, and afternoon block.</p>
+          <p style={{ fontSize: "0.75rem", color: "#475569", marginTop: 10, marginBottom: 0 }}>Days with pauses export work blocks and pause events (one event per block and pause).</p>
         </div>
 
         <p style={{ textAlign: "center", color: "#334155", fontSize: "0.75rem", marginTop: "1.5rem" }}>Adjust any day — unlocked days auto-balance to meet your weekly target</p>
