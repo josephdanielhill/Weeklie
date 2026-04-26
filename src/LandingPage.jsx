@@ -71,10 +71,23 @@ function MockProgressPanel({ planned, target, carryOver }) {
         {carryOver && (
           <div style={{ borderLeft: `1px solid ${CARD2}`, paddingLeft: '1.25rem' }}>
             <div style={{ fontSize: '0.7rem', color: TEXT3, marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Carry-over</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <MockBtn>-</MockBtn>
-              <span style={{ fontSize: '1.4rem', fontWeight: 700, minWidth: 76, textAlign: 'center', color: GREEN }}>+2h 00m</span>
-              <MockBtn>+</MockBtn>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <MockBtn>-</MockBtn>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 700, minWidth: 42, textAlign: 'center', color: GREEN }}>+2h</span>
+                  <MockBtn>+</MockBtn>
+                </div>
+                <span style={{ fontSize: '0.6rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>hours</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <MockBtn>-</MockBtn>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 700, minWidth: 42, textAlign: 'center', color: GREEN }}>00m</span>
+                  <MockBtn>+</MockBtn>
+                </div>
+                <span style={{ fontSize: '0.6rem', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>mins</span>
+              </div>
             </div>
           </div>
         )}

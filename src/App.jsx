@@ -358,12 +358,27 @@ export default function App() {
             </div>
             <div style={{ borderLeft: "1px solid #334155", paddingLeft: "1.25rem" }}>
               <div style={{ fontSize: "0.75rem", color: "#94a3b8", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.05em" }}>Carry-over</div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button onClick={() => handleCarryOver(-1/60)} style={btnStyle}>-</button>
-                <span style={{ fontSize: "1.5rem", fontWeight: 700, minWidth: 80, textAlign: "center", color: carryOver > 0 ? "#22c55e" : carryOver < 0 ? "#ef4444" : "#f8fafc" }}>
-                  {carryOver > 0 ? "+" : carryOver < 0 ? "-" : ""}{Math.floor(Math.abs(carryOver))}h {String(Math.round((Math.abs(carryOver) % 1) * 60)).padStart(2,"0")}m
-                </span>
-                <button onClick={() => handleCarryOver(1/60)} style={btnStyle}>+</button>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button onClick={() => handleCarryOver(-1)} style={btnStyle}>-</button>
+                    <span style={{ fontSize: "1.4rem", fontWeight: 700, minWidth: 44, textAlign: "center", color: carryOver > 0 ? "#22c55e" : carryOver < 0 ? "#ef4444" : "#f8fafc" }}>
+                      {carryOver > 0 ? "+" : carryOver < 0 ? "-" : ""}{Math.floor(Math.abs(carryOver))}h
+                    </span>
+                    <button onClick={() => handleCarryOver(1)} style={btnStyle}>+</button>
+                  </div>
+                  <span style={{ fontSize: "0.65rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>hours</span>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button onClick={() => handleCarryOver(-1/60)} style={btnStyle}>-</button>
+                    <span style={{ fontSize: "1.4rem", fontWeight: 700, minWidth: 44, textAlign: "center", color: carryOver > 0 ? "#22c55e" : carryOver < 0 ? "#ef4444" : "#f8fafc" }}>
+                      {String(Math.round((Math.abs(carryOver) % 1) * 60)).padStart(2,"0")}m
+                    </span>
+                    <button onClick={() => handleCarryOver(1/60)} style={btnStyle}>+</button>
+                  </div>
+                  <span style={{ fontSize: "0.65rem", color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>mins</span>
+                </div>
               </div>
             </div>
             <div style={{ flex: 1, minWidth: 180 }}>
