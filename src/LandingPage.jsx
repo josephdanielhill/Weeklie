@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 const ACCENT = '#6366f1';
 const ACCENT_LIGHT = '#818cf8';
@@ -544,7 +544,7 @@ export default function LandingPage() {
             { icon: '🌍', title: 'Timezone-aware', body: 'Calendar exports include full timezone data — no appointments shifting on you.' },
             { icon: '📱', title: 'Mobile-friendly', body: 'Plan on your phone as easily as on your desktop. No app to download.' },
             { icon: '⚡', title: 'Instant', body: 'No sign-up, no loading spinner. Just open the page and start planning.' },
-            { icon: '🔓', title: 'Free & open', body: 'No subscription, no ads, no tracking. Just a tool that does one thing well.' },
+            { icon: '🔓', title: 'Free & open', body: 'No subscription, no ads, just privacy-friendly analytics. Just a tool that does one thing well.' },
           ].map(({ icon, title, body }) => (
             <div key={title} style={{ background: CARD, borderRadius: 16, padding: '1.5rem' }}>
               <div style={{ fontSize: '1.6rem', marginBottom: 12 }}>{icon}</div>
@@ -582,6 +582,8 @@ export default function LandingPage() {
         <a href="https://tally.so/r/zxNrGM" target="_blank" rel="noopener noreferrer" style={{ color: TEXT4, textDecoration: 'underline' }}>Send feedback</a>
         {' '}·{' '}
         <a href="https://scrapbook.josephhill.co/3+-+Areas/scrapbook/Projects/pages/Weeklie" target="_blank" rel="noopener noreferrer" style={{ color: TEXT4, textDecoration: 'underline' }}>Changelog</a>
+        {' '}·{' '}
+        <Link to="/privacy" style={{ color: TEXT4, textDecoration: 'underline' }}>Privacy Policy</Link>
       </footer>
 
     </div>
