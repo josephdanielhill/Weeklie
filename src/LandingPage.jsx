@@ -238,9 +238,6 @@ function MockCWExport() {
         </div>
       </div>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-        <div style={{ background: '#4285f4', borderRadius: 10, padding: '10px 18px', color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>
-          Add to Google Calendar
-        </div>
         <div style={{ background: GREEN, borderRadius: 10, padding: '10px 18px', color: '#fff', fontSize: '0.82rem', fontWeight: 600 }}>
           Save weeklie.ics
         </div>
@@ -510,11 +507,10 @@ export default function LandingPage() {
             <FeatureLabel text="Calendar Export" />
             <FeatureHeading>Send it straight to your calendar</FeatureHeading>
             <FeatureBody>
-              Once your week is planned, pick the calendar week with the CW picker and export directly to Google Calendar or download an .ics file for any other app. Morning blocks, pauses, and afternoon sessions are created as separate events.
+              Once your week is planned, pick the calendar week with the CW picker and download an .ics file for any calendar app. Morning blocks, pauses, and afternoon sessions are created as separate events.
             </FeatureBody>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {[
-                { icon: '📅', text: 'Add to Google Calendar — one click, all events' },
                 { icon: '📥', text: 'Download .ics for Apple Calendar, Outlook & more' },
                 { icon: '☕', text: 'Pauses exported as separate events' },
               ].map(({ icon, text }) => (
