@@ -134,7 +134,8 @@ function toICSTime(h, dateStr) {
   return dateStr + "T" + String(hh).padStart(2,"0") + String(mm).padStart(2,"0") + "00";
 }
 
-function buildICS(days, startMonday) {
+// eslint-disable-next-line react-refresh/only-export-components
+export function buildICS(days, startMonday) {
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -194,34 +195,6 @@ function buildICS(days, startMonday) {
 
   lines.push("END:VCALENDAR");
   return lines.join("\r\n") + "\r\n";
-}
-
-function buildGCalUrl(d, dayDate) {
-  const dateStr = formatDateLocal(dayDate);
-  const urls = [];
-
-  function makeUrl(start, end, title, details) {
-    const s = toICSTime(start, dateStr).slice(9);
-    const e = toICSTime(end, dateStr).slice(9);
-    return "https://calendar.google.com/calendar/render?action=TEMPLATE&text=" + encodeURIComponent(title) + "&dates=" + dateStr + "T" + s + "/" + dateStr + "T" + e + "&details=" + encodeURIComponent(details) + "&ctz=Europe/Berlin";
-  }
-
-  const sortedPauses = clampAllPauses(d.pauses, d.start, d.end);
-
-  if (sortedPauses.length === 0) {
-    urls.push(makeUrl(d.start, d.end, "Planned Working Block", "Full day " + dayHours(d.start, d.end, 0).toFixed(1) + "h"));
-  } else {
-    let cursor = d.start;
-    sortedPauses.forEach(function(p, pi) {
-      const pauseEnd = p.start + p.duration / 60;
-      const blockLabel = pi === 0 ? "Morning" : "Block " + (pi + 1);
-      urls.push(makeUrl(cursor, p.start, "Planned Working Block", blockLabel + " " + dayHours(cursor, p.start, 0).toFixed(1) + "h"));
-      urls.push(makeUrl(p.start, pauseEnd, "Pause", p.duration + " min pause"));
-      cursor = pauseEnd;
-    });
-    urls.push(makeUrl(cursor, d.end, "Planned Working Block", "Afternoon " + dayHours(cursor, d.end, 0).toFixed(1) + "h"));
-  }
-  return urls;
 }
 
 function ICSDownloadLink({ days, startDate, onError }) {
@@ -296,17 +269,6 @@ export default function App() {
       setDays(prev => redistributeAllToTarget(prev, newEffectiveTarget));
       return newCarryOver;
     });
-  };
-
-  const handleGoogleCalendar = () => {
-    if (!startDate) { setExportMsg("Please pick a start date first."); setTimeout(() => setExportMsg(""), 4000); return; }
-    const monday = getMondayOf(startDate);
-    days.forEach((d, i) => {
-      if (d.offDay) return;
-      buildGCalUrl(d, addDays(monday, i)).forEach(url => window.open(url, "_blank"));
-    });
-    setExportMsg("Opened Google Calendar tabs!");
-    setTimeout(() => setExportMsg(""), 4000);
   };
 
   return (
@@ -521,9 +483,6 @@ export default function App() {
             <CWPicker value={startDate} onChange={setStartDate} />
           </div>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-            <button onClick={handleGoogleCalendar} style={{ border: "none", borderRadius: 10, padding: "10px 18px", color: "#fff", fontSize: "0.85rem", cursor: "pointer", fontWeight: 600, background: "#4285f4" }}>
-              Add to Google Calendar
-            </button>
             <ICSDownloadLink days={days} startDate={startDate} onError={msg => { setExportMsg(msg); setTimeout(() => setExportMsg(""), 4000); }} />
           </div>
           {exportMsg && <div style={{ marginTop: 10, fontSize: "0.82rem", color: "#22c55e", fontWeight: 600 }}>{exportMsg}</div>}
