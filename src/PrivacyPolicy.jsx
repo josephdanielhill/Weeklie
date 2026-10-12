@@ -90,10 +90,9 @@ export default function PrivacyPolicy() {
 
         <SectionHeading>Calendar export</SectionHeading>
         <P>
-          When you export your plan to Google Calendar or as an .ics file, that happens entirely in your
-          browser — your calendar events are generated locally and either downloaded directly or handed off
-          to Google's own calendar page, which is governed by Google's privacy policy. Weeklie itself never
-          sees or stores this data.
+          When you export your plan as an .ics file, that happens entirely in your
+          browser — your calendar events are generated locally and downloaded directly.
+          Weeklie itself never sees or stores this data.
         </P>
 
         <SectionHeading>Contact</SectionHeading>
